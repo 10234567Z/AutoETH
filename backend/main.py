@@ -43,7 +43,7 @@ async def create_agent(agent_details: AgentDetails):
                 "Content-Type": "application/json"
             },
             json={
-                "name": agent_details.name,
+                "name": f"POI_Agent_{agent_details.name}",
                 "readme": agent_details.readme,
                 "avatar_url": agent_details.avatar_url,
                 "short_description": agent_details.short_description,
@@ -78,6 +78,62 @@ async def create_agent(agent_details: AgentDetails):
         return {
             "status": "success",
             "message": "Agent created and started successfully",
+            "agent_details": start_response.json(),
+        }
+        
+@app.post("/platform-agent")
+async def create_platform_agent(agent_details: AgentDetails):
+    """Create and start a platform agent on Agentverse"""
+    if agent_details.agentverse_api_key != AGENTVERSE_API_KEY:
+        return {
+            "status": "error",
+            "message": "Unauthorized to register on Proof of Intelligence as a platform agent"
+        }
+    
+    async with httpx.AsyncClient() as client:
+        # Step 1: Create the platform agent on Agentverse
+        create_response = await client.post(
+            f"{AGENTVERSE_BASE_URL}/hosting/platform-agents",
+            headers={
+                "Authorization": f"Bearer {agent_details.agentverse_api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "name": f"POI_Platform_Agent_{agent_details.name}",
+                "readme": agent_details.readme,
+                "avatar_url": agent_details.avatar_url,
+                "short_description": agent_details.short_description,
+                "network": agent_details.network
+            }
+        )
+        
+        if create_response.status_code != 200:
+            return {
+                "status": "error",
+                "message": f"Failed to create platform agent: {create_response.text}"
+            }
+        
+        agent_data = create_response.json()
+        agent_address = agent_data.get("address")
+        
+        # Step 2: Start the platform agent
+        start_response = await client.post(
+            f"{AGENTVERSE_BASE_URL}/hosting/platform-agents/{agent_address}/start",
+            headers={
+                "Authorization": f"Bearer {agent_details.agentverse_api_key}",
+            }
+        )
+        
+        if start_response.status_code != 200:
+            return {
+                "status": "error",
+                "message": f"Platform agent created but failed to start: {start_response.text}",
+                "agent_address": agent_address
+            }
+        
+        return {
+            "status": "success",
+            "message": "Platform agent created and started successfully",
             "agent_details": start_response.json(),
         }
 
