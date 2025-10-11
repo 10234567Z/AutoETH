@@ -20,9 +20,9 @@ AGENTVERSE_BASE_URL = "https://agentverse.ai/v1"
 class AgentDetails(BaseModel):
     name: str
     readme: str
-    avatar_url: str = None
-    short_description: str = None
-    network: str = "testnet"
+    avatar_url: str
+    short_description: str
+    network: Optional[str] = "testnet"
     agentverse_api_key: str
 
 @app.get("/")
@@ -93,7 +93,7 @@ async def create_platform_agent(agent_details: AgentDetails):
     async with httpx.AsyncClient() as client:
         # Step 1: Create the platform agent on Agentverse
         create_response = await client.post(
-            f"{AGENTVERSE_BASE_URL}/hosting/platform-agents",
+            f"{AGENTVERSE_BASE_URL}/hosting/agents",
             headers={
                 "Authorization": f"Bearer {agent_details.agentverse_api_key}",
                 "Content-Type": "application/json"
@@ -118,7 +118,7 @@ async def create_platform_agent(agent_details: AgentDetails):
         
         # Step 2: Start the platform agent
         start_response = await client.post(
-            f"{AGENTVERSE_BASE_URL}/hosting/platform-agents/{agent_address}/start",
+            f"{AGENTVERSE_BASE_URL}/hosting/agents/{agent_address}/start",
             headers={
                 "Authorization": f"Bearer {agent_details.agentverse_api_key}",
             }
