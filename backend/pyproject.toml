@@ -4,4 +4,10 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "fastapi>=0.118.3",
+    "httpx>=0.28.1",
+    "python-dotenv>=1.1.1",
+    "uagents>=0.22.10",
+    "uvicorn>=0.37.0",
+]
