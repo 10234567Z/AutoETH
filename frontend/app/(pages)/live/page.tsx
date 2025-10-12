@@ -1,4 +1,6 @@
+"use client";
 import React, { useEffect, useState } from "react";
+import Nav from "../../components/nav";
 
 const feeds = [
   {
@@ -58,10 +60,11 @@ function useLivePrices() {
   return prices;
 }
 
-const LiveFeed = () => {
+const Live = () => {
   const prices = useLivePrices();
   return (
     <main className="min-h-screen bg-[#0A0B0F] py-20 px-4 flex flex-col items-center">
+      <Nav />
       <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 text-center">
         Live Oracle Feed
       </h1>
@@ -92,4 +95,4 @@ const LiveFeed = () => {
   );
 };
 
-export default LiveFeed;
+export default Live;

@@ -1,7 +1,8 @@
 import React from "react";
-import Hero from "./components/hero";
-import Features from "./components/features";
-import Footer from "./components/footer";
+import Hero from "../../components/hero";
+import Features from "../../components/features";
+import Footer from "../../components/footer";
+import Nav from "../../components/nav";
 
 const steps = [
   {
@@ -89,6 +90,7 @@ const HowItWorks = () => (
 
 const Home = () => (
   <main className="bg-[#0A0B0F] min-h-screen flex flex-col">
+    <Nav></Nav>
     <Hero />
     <InfoIntro />
     <Features />
