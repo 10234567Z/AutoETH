@@ -1,13 +1,9 @@
 from fastapi import FastAPI
 import uvicorn
 from pydantic import BaseModel
-import httpx
 import os
-import json
 from typing import Optional
 from dotenv import load_dotenv
-
-from uagents import Agent, Context
 
 # Load environment variables from .env file
 load_dotenv()
@@ -48,7 +44,6 @@ from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
 )
 
-# ETH price prediction subject
 subject_matter = "Ethereum (ETH) price prediction"
 
 client = OpenAI(
