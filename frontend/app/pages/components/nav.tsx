@@ -2,105 +2,52 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 
+const navLinks = [
+  { name: "Home", href: "/Home" },
+  { name: "Live", href: "/pages/home" },
+  { name: "LeaderBoard", href: "/pages/live" },
+  { name: "Contact Us", href: "/about" },
+];
+
 const Nav = () => {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo and Brand */}
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-black/10 font-sans">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex items-center justify-between h-20">
+          {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
-                <span className="text-white font-bold">$</span>
-              </div>
-              <span className="text-white text-lg font-semibold">
-                Proof Of Inteligence
+            <Link href="/" className="flex items-center space-x-3">
+              <span className="text-2xl font-bold text-[#fffdfd] tracking-tight">
+                Proof
+                <span className="font-normal"> of Intelligence</span>
               </span>
             </Link>
           </div>
 
-          {/* Navigation Links - Desktop */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link
-              href="/blog"
-              className="text-gray-300 hover:text-white transition-colors"
-            >
-              Home
-            </Link>
-            <Link
-              href="/developers"
-              className="text-gray-300 hover:text-white transition-colors"
-            >
-              Live
-            </Link>
-            <Link
-              href="/contact"
-              className="text-gray-300 hover:text-white transition-colors"
-            >
-              LeaderBoard
-            </Link>
-            <Link
-              href="/launch"
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              Login
-            </Link>
+          {/* Centered Navigation Links */}
+          <div className="flex-1 flex justify-center">
+            <ul className="flex items-center gap-8">
+              {navLinks.map((link) => (
+                <li key={link.name} className="relative">
+                  <Link
+                    href={link.href}
+                    className="text-lg font-medium text-[#fff] hover:text-[#444] transition-colors"
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
-            <button
-              type="button"
-              className="text-gray-300 hover:text-white p-2"
-              aria-controls="mobile-menu"
-              aria-expanded="false"
-            >
-              <span className="sr-only">Open main menu</span>
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="1.5"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
+          {/* Login Button */}
+          <div className="flex items-center">
+            <Link href="/login">
+              <button className="border-2 border-[#e5e7eb] text-[#222] bg-white px-6 py-2 rounded-full font-semibold text-lg shadow-sm hover:bg-[#f3f6fa] transition-all">
+                Login
+              </button>
+            </Link>
           </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      <div className="md:hidden" id="mobile-menu">
-        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-          <Link
-            href="/blog"
-            className="text-gray-300 hover:text-white block px-3 py-2 rounded-md"
-          >
-            Home
-          </Link>
-          <Link
-            href="/developers"
-            className="text-gray-300 hover:text-white block px-3 py-2 rounded-md"
-          >
-            Live
-          </Link>
-          <Link
-            href="/contact"
-            className="text-gray-300 hover:text-white block px-3 py-2 rounded-md"
-          >
-            LeaderBoard
-          </Link>
-          <Link
-            href="/launch"
-            className="bg-purple-600 text-white block px-3 py-2 rounded-md hover:bg-purple-700"
-          >
-            Login
-          </Link>
         </div>
       </div>
     </nav>
@@ -108,3 +55,29 @@ const Nav = () => {
 };
 
 export default Nav;
+
+// Modern CTA Section for Landing Page
+export const LandingCTA = () => (
+  <section className="py-24 px-4  bg-black/80 backdrop-blur-sm text-center border-t border-white/10">
+    <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
+      Ready to Transform Your Data Validation?
+    </h2>
+    <p className="text-lg md:text-xl text-gray-300 mb-10">
+      Join hundreds of AI agents and validators who trust Proof Of Intelligence
+      for secure, real-time oracle data validation and consensus.
+    </p>
+    <div className="flex flex-col md:flex-row gap-6 justify-center items-center">
+      <Link href="/onboarding">
+        <button className="flex items-center gap-2 bg-purple-600 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg border-2 border-purple-600 hover:bg-purple-700 hover:border-purple-700 transition-all">
+          <span>🤖</span> Get Started as Validator{" "}
+          <span className="ml-2">→</span>
+        </button>
+      </Link>
+      <Link href="/live">
+        <button className="flex items-center gap-2 bg-black text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg border-2 border-white hover:bg-purple-900 hover:border-purple-600 transition-all">
+          <span>📡</span> View Live Oracle Feed <span className="ml-2">→</span>
+        </button>
+      </Link>
+    </div>
+  </section>
+);

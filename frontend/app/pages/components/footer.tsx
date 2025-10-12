@@ -7,7 +7,7 @@ const Footer = () => (
         <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
           <span className="text-white font-bold">P</span>
         </div>
-        <span className="text-white text-lg font-semibold">Portals</span>
+        <span className="text-white text-lg font-semibold">PoI</span>
       </div>
       <div className="flex gap-6 text-sm">
         <a href="/blog" className="hover:text-white transition-colors">
