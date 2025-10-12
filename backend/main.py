@@ -3,6 +3,7 @@ import uvicorn
 from pydantic import BaseModel
 import httpx
 import os
+import json
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -16,6 +17,7 @@ app = FastAPI(title="Proof of Intelligence Backend")
 # Agentverse API configuration
 AGENTVERSE_API_KEY = os.getenv("AGENTVERSE_API_KEY")
 AGENTVERSE_BASE_URL = "https://agentverse.ai/v1"
+ASI_ONE_API_KEY  = os.getenv("ASIONE_API_KEY")
 
 class AgentDetails(BaseModel):
     name: str
@@ -24,119 +26,91 @@ class AgentDetails(BaseModel):
     short_description: str
     network: Optional[str] = "testnet"
     agentverse_api_key: str
+    agent_seed: Optional[str] = None  # Unique seed for agent randomness
 
 @app.get("/")
 async def root():
     return {"message": "Proof of Intelligence", "token": AGENTVERSE_API_KEY}
 
 
-@app.post("/agent")
-async def create_agent(agent_details: AgentDetails):
-    """Create and start an agent on Agentverse"""
-    
-    async with httpx.AsyncClient() as client:
-        # Step 1: Create the agent on Agentverse
-        create_response = await client.post(
-            f"{AGENTVERSE_BASE_URL}/hosting/agents",
-            headers={
-                "Authorization": f"Bearer {agent_details.agentverse_api_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "name": f"POI_Agent_{agent_details.name}",
-                "readme": agent_details.readme,
-                "avatar_url": agent_details.avatar_url,
-                "short_description": agent_details.short_description,
-                "network": agent_details.network
-            }
-        )
-        
-        if create_response.status_code != 200:
-            return {
-                "status": "error",
-                "message": f"Failed to create agent: {create_response.text}"
-            }
-        
-        agent_data = create_response.json()
-        agent_address = agent_data.get("address")
-        
-        # Step 2: Start the agent
-        start_response = await client.post(
-            f"{AGENTVERSE_BASE_URL}/hosting/agents/{agent_address}/start",
-            headers={
-                "Authorization": f"Bearer {agent_details.agentverse_api_key}",
-            }
-        )
-        
-        if start_response.status_code != 200:
-            return {
-                "status": "error",
-                "message": f"Agent created but failed to start: {start_response.text}",
-                "agent_address": agent_address
-            }
-        
-        return {
-            "status": "success",
-            "message": "Agent created and started successfully",
-            "agent_details": start_response.json(),
-        }
-        
-@app.post("/platform-agent")
-async def create_platform_agent(agent_details: AgentDetails):
-    """Create and start a platform agent on Agentverse"""
-    if agent_details.agentverse_api_key != AGENTVERSE_API_KEY:
-        return {
-            "status": "error",
-            "message": "Unauthorized to register on Proof of Intelligence as a platform agent"
-        }
-    
-    async with httpx.AsyncClient() as client:
-        # Step 1: Create the platform agent on Agentverse
-        create_response = await client.post(
-            f"{AGENTVERSE_BASE_URL}/hosting/agents",
-            headers={
-                "Authorization": f"Bearer {agent_details.agentverse_api_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "name": f"POI_Platform_Agent_{agent_details.name}",
-                "readme": agent_details.readme,
-                "avatar_url": agent_details.avatar_url,
-                "short_description": agent_details.short_description,
-                "network": agent_details.network
-            }
-        )
-        
-        if create_response.status_code != 200:
-            return {
-                "status": "error",
-                "message": f"Failed to create platform agent: {create_response.text}"
-            }
-        
-        agent_data = create_response.json()
-        agent_address = agent_data.get("address")
-        
-        # Step 2: Start the platform agent
-        start_response = await client.post(
-            f"{AGENTVERSE_BASE_URL}/hosting/agents/{agent_address}/start",
-            headers={
-                "Authorization": f"Bearer {agent_details.agentverse_api_key}",
-            }
-        )
-        
-        if start_response.status_code != 200:
-            return {
-                "status": "error",
-                "message": f"Platform agent created but failed to start: {start_response.text}",
-                "agent_address": agent_address
-            }
-        
-        return {
-            "status": "success",
-            "message": "Platform agent created and started successfully",
-            "agent_details": start_response.json(),
-        }
+def get_eth_prediction_agent_code(agent_name: str, seed: str) -> str:
+    """Generate ETH price prediction agent code"""
+    return f"""from datetime import datetime, timezone
+from uuid import uuid4
 
+from openai import OpenAI
+from uagents import Context, Protocol, Agent
+from uagents_core.contrib.protocols.chat import (
+    ChatAcknowledgement,
+    ChatMessage,
+    EndSessionContent,
+    TextContent,
+    chat_protocol_spec,
+)
+
+# ETH price prediction subject
+subject_matter = "Ethereum (ETH) price prediction"
+
+client = OpenAI(
+    base_url='https://api.asi1.ai/v1',
+    api_key={repr(ASI_ONE_API_KEY)},
+)
+
+agent = Agent()
+protocol = Protocol(spec=chat_protocol_spec)
+
+
+@protocol.on_message(ChatMessage)
+async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
+    # Send acknowledgement
+    await ctx.send(
+        sender,
+        ChatAcknowledgement(timestamp=datetime.now(), acknowledged_msg_id=msg.msg_id),
+    )
+
+    # Extract text from message
+    text = ''
+    for item in msg.content:
+        if isinstance(item, TextContent):
+            text += item.text
+
+    # Query model
+    response = 'I am afraid something went wrong and I am unable to answer your question at the moment'
+    try:
+        r = client.chat.completions.create(
+            model="asi1-mini",
+            messages=[
+                {{"role": "system", "content": f"You are a helpful assistant who only answers questions about {{subject_matter}}. If the user asks about any other topics, you should politely say that you do not know about them."}},
+                {{"role": "user", "content": text}},
+            ],
+            max_tokens=2048,
+        )
+
+        response = str(r.choices[0].message.content)
+    except:
+        ctx.logger.exception('Error querying model')
+
+    # Send response back
+    await ctx.send(sender, ChatMessage(
+        timestamp=datetime.utcnow(),
+        msg_id=uuid4(),
+        content=[
+            TextContent(type="text", text=response),
+            EndSessionContent(type="end-session"),
+        ]
+    ))
+
+
+@protocol.on_message(ChatAcknowledgement)
+async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
+    pass
+
+
+# attach the protocol to the agent
+agent.include(protocol, publish_manifest=True)
+
+"""
+        
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=3002)
