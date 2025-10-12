@@ -6,12 +6,11 @@ const navLinks = [
   { name: "Home", href: "/home" },
   { name: "Live", href: "/live" },
   { name: "LeaderBoard", href: "/leaderboard" },
-  { name: "Contact Us", href: "/about" },
 ];
 
 const Nav = () => {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-black/10 font-sans">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-sm border-b border-black/10 font-sans">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
