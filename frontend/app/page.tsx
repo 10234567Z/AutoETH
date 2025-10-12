@@ -1,6 +1,6 @@
 import Image from "next/image";
 import React from "react";
-import HomePage from "./(pages)/home";
+import HomePage from "../app/(pages)/home/page";
 
 export default function Home() {
   return (
