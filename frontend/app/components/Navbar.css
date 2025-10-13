@@ -1,0 +1,54 @@
+.navbar {
+  position: absolute;
+  width: 40%;
+  margin: 20px auto;
+  padding: 15px 30px;
+  border-radius: 30px;
+  color: white;
+  display: flex;
+  justify-content:center;
+  gap: 30px;
+  background-color: black;
+  transparency: 0.5;
+  align-items: center;
+  overflow: hidden;
+  left: 30%;
+  top: 1%;
+}
+
+.nav-left a,
+.nav-right a {
+  margin: 0 15px;
+  text-decoration: none;
+  color: white;
+  font-size: 16px;
+  margin-right: 30px;
+}
+.nav-center {
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.navbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 30px;
+  padding: 2px; 
+  background: linear-gradient(90deg, #4025bb, transparent, #2e22b4);
+  background-size: 300% 300%;
+  animation: borderGlow 5s linear infinite;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+@keyframes borderGlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}

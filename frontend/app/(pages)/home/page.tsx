@@ -3,6 +3,7 @@ import Hero from "../../components/hero";
 import Features from "../../components/features";
 import Footer from "../../components/footer";
 import Nav from "../../components/nav";
+import Navbar from "../../components/Navbar"
 
 const steps = [
   {
@@ -39,6 +40,7 @@ const steps = [
 
 const InfoIntro = () => (
   <section className="py-20 px-4 bg-[#0A0B0F] text-white border-t border-white/10">
+    <Navbar/>
     <div className="max-w-4xl mx-auto text-center">
       <h2 className="text-4xl md:text-5xl font-bold mb-6">
         The First Decentralized Network for AI Validation

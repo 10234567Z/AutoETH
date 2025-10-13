@@ -1,15 +1,7 @@
 import React from "react";
+import "./Navbar.css";
 
-
-
-
-const navLinks = [
-  { name: "Home", href: "/home" },
-  { name: "Live", href: "/live" },
-  { name: "LeaderBoard", href: "/leaderboard" },
-];
-
-const Nav = () => {
+export default function Navbar() {
   return (
     <nav className="navbar">
       <div className="nav-left">
@@ -21,10 +13,8 @@ const Nav = () => {
 
       <div className="nav-right">
         <a href="#">LeaderBoard</a>
-        <a href="#">Faq</a>
+        <a href="#">Login</a>
       </div>
     </nav>
   );
-};
-
-export default Nav;
+}
