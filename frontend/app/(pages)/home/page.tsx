@@ -3,7 +3,8 @@ import Hero from "../../components/hero";
 import Features from "../../components/features";
 import Footer from "../../components/footer";
 import Nav from "../../components/nav";
-import Navbar from "../../components/Navbar"
+import Navbar from "../../components/Navbar";
+import Smplifies from "../../components/simplifies";
 
 const steps = [
   {
@@ -40,7 +41,7 @@ const steps = [
 
 const InfoIntro = () => (
   <section className="py-20 px-4 bg-[#0A0B0F] text-white border-t border-white/10">
-    <Navbar/>
+    <Navbar />
     <div className="max-w-4xl mx-auto text-center">
       <h2 className="text-4xl md:text-5xl font-bold mb-6">
         The First Decentralized Network for AI Validation
@@ -68,27 +69,7 @@ const InfoIntro = () => (
   </section>
 );
 
-const HowItWorks = () => (
-  <section className="py-20 px-4 bg-[#0A0B0F] text-white border-t border-white/10">
-    <div className="max-w-6xl mx-auto">
-      <h2 className="text-3xl md:text-4xl font-bold mb-12 text-center">
-        How It Works
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-        {steps.map((step, idx) => (
-          <div
-            key={idx}
-            className="bg-black/40 border border-white/10 rounded-2xl p-8 shadow-lg flex flex-col items-center text-center hover:border-purple-500 transition-all"
-          >
-            <div className="text-4xl mb-4">{step.icon}</div>
-            <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
-            <p className="text-gray-300">{step.description}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-);
+
 
 const Home = () => (
   <main className="bg-[#0A0B0F] min-h-screen flex flex-col">
@@ -96,7 +77,7 @@ const Home = () => (
     <Hero />
     <InfoIntro />
     <Features />
-    <HowItWorks />
+    <Smplifies />
     <Footer />
   </main>
 );
