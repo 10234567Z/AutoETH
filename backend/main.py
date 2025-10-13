@@ -4,6 +4,8 @@ from pydantic import BaseModel
 import os
 from typing import Optional
 from dotenv import load_dotenv
+import httpx
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -105,7 +107,42 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
 agent.include(protocol, publish_manifest=True)
 
 """
+
+
+def fetch_pyth_hermes():
+    """ Fetch ETH/USD price feed from Pyth Hermes API """
+    
+    # ETH/USD price feed ID
+    eth_usd_feed_id = os.getenv("ETHUSD_PRICEFEED_ADDR")
+    
+    url = f"https://hermes.pyth.network/v2/updates/price/latest?ids[]={eth_usd_feed_id}"
+    
+    try:
+        response = httpx.get(url)
+        data = response.json()
         
+        if "parsed" in data and len(data["parsed"]) > 0:
+            eth_data = data["parsed"][0]
+            
+            # Extract price and expo
+            price_raw = int(eth_data["price"]["price"])
+            expo = int(eth_data["price"]["expo"])
+            actual_price = price_raw * (10 ** expo)
+            
+            # Extract EMA price
+            ema_price_raw = int(eth_data["ema_price"]["price"])
+            ema_expo = int(eth_data["ema_price"]["expo"])
+            actual_ema_price = ema_price_raw * (10 ** ema_expo)
+            
+            return {
+                "price": actual_price,
+                "ema_price": actual_ema_price,
+                "publish_time": eth_data["price"]["publish_time"]
+            }
+    except Exception as e:
+        print(f"Error fetching Pyth price: {e}")
+        return None
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=3002)
+    print(fetch_pyth_hermes())
