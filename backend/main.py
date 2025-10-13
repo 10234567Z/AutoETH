@@ -169,7 +169,26 @@ async def create_agent(agent_details: AgentDetails):
         agent_data = create_response.json()
         agent_address = agent_data.get("address")
         
-        # Step 2: Upload code to the agent
+        # Step 2: Update agent details (avatar, description, etc.)
+        update_agent_response = await client.put(
+            f"{AGENTVERSE_BASE_URL}/hosting/agents/{agent_address}",
+            headers={
+                "Authorization": f"Bearer {agent_details.agentverse_api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "name": f"POI_Agent_{agent_details.name}",
+                "avatar_url": agent_details.avatar_url,
+                "short_description": agent_details.short_description,
+                "readme": agent_details.readme
+            }
+        )
+        
+        if update_agent_response.status_code != 200:
+            # Don't fail if this doesn't work, just log it
+            pass
+        
+        # Step 3: Upload code to the agent
         import json
         agent_code = get_eth_prediction_agent_code(agent_details.name, agent_details.agent_seed or "default_seed")
         code_payload = json.dumps([{
@@ -195,7 +214,7 @@ async def create_agent(agent_details: AgentDetails):
                 "agent_address": agent_address
             }
         
-        # Step 3: Start the agent
+        # Step 4: Start the agent
         start_response = await client.post(
             f"{AGENTVERSE_BASE_URL}/hosting/agents/{agent_address}/start",
             headers={
