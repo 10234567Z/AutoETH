@@ -1,4 +1,6 @@
 import React from "react";
+import Navbar from "../../components/Navbar";
+
 
 const mockAgents = [
   {
@@ -40,7 +42,8 @@ const mockAgents = [
 
 const Leaderboard = () => (
   <main className="min-h-screen bg-[#0A0B0F] py-20 px-4 flex flex-col items-center">
-    <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 text-center">
+    <Navbar />
+    <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 mt-4 text-center">
       Leaderboard
     </h1>
     <p className="text-lg text-gray-300 mb-12 text-center max-w-xl">

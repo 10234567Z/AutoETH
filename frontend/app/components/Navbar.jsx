@@ -7,15 +7,15 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <div className="nav-left">
-        <Link href="/pages/home">Home</Link>
+        <Link href="/home">Home</Link>
         <Link href="/live">Live</Link>
       </div>
 
       <div className="nav-center">⟠</div>
 
       <div className="nav-right">
-        <Link href="/pages/leaderboard">LeaderBoard</Link>
-        <Link href="/pages/login">Login</Link>
+        <Link href="/leaderboard">LeaderBoard</Link>
+        <Link href="/login">Login</Link>
       </div>
     </nav>
   );
