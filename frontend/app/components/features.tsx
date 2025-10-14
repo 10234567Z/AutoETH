@@ -87,21 +87,51 @@ const features = [
 
 const Features = () => (
   <section className="py-20 px-4 bg-[#0A0B0F] text-white border-t border-white/10">
-    <div className="max-w-6xl mx-auto">
-      <h2 className="text-3xl md:text-4xl font-bold mb-12 text-center">
+    <div className="max-w-7xl mx-auto">
+      <h2 className="text-3xl md:text-5xl font-bold mb-12 text-center bg-gradient-to-r from-purple-500 via-purple-400 to-blue-500 bg-clip-text text-transparent">
         Key Features
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        {features.map((feature, idx) => (
-          <div
-            key={idx}
-            className="bg-black/40 border border-white/10 rounded-2xl p-8 shadow-lg flex flex-col items-center text-center hover:border-purple-500 transition-all"
-          >
-            <div className="mb-4">{feature.icon}</div>
-            <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-            <p className="text-gray-300">{feature.description}</p>
+      <div className="flex flex-col lg:flex-row gap-12 items-center">
+        {/* Features Grid */}
+        <div className="w-full lg:w-3/5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {features.map((feature, idx) => (
+              <div
+                key={idx}
+                className="group bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl p-6 shadow-lg hover:shadow-purple-500/20 hover:border-purple-500/50 transition-all duration-300"
+              >
+                <div className="mb-4 transform group-hover:scale-110 transition-transform duration-300">
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-semibold mb-3 text-white/90">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  {feature.description}
+                </p>
+                <div className="mt-4 w-12 h-1 bg-gradient-to-r from-purple-500 to-transparent rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* Video Section */}
+        <div className="w-full lg:w-2/5">
+          <div className="relative rounded-2xl overflow-hidden ">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-5/10 object-contain mx-auto my-8 relative z-10"
+            >
+              <source src="/img/bg.mov" type="video/quicktime" />
+              Your browser does not support the video tag.
+            </video>
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 " />
+          </div>
+        </div>
       </div>
     </div>
   </section>
