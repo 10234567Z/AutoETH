@@ -5,6 +5,8 @@ import os
 from typing import Optional
 from dotenv import load_dotenv
 import httpx
+from web3 import Web3
+import json
 
 
 # Load environment variables from .env file
@@ -16,6 +18,39 @@ app = FastAPI(title="Proof of Intelligence Backend")
 AGENTVERSE_API_KEY = os.getenv("AGENTVERSE_API_KEY")
 AGENTVERSE_BASE_URL = "https://agentverse.ai/v1"
 ASI_ONE_API_KEY  = os.getenv("ASIONE_API_KEY")
+
+# Smart Contract Configuration
+HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api"
+CONTRACT_ADDRESS = Web3.to_checksum_address("0x197ae8760f2a617ac0fa4ba66c55f443608d3a0d")
+HEDERA_PRIVATE_KEY = os.getenv("HEDERA_TESTNET_PRIVATE_KEY")
+
+# Initialize Web3
+w3 = Web3(Web3.HTTPProvider(HEDERA_TESTNET_RPC))
+
+# Contract ABI for registerAgent function
+CONTRACT_ABI = json.loads('''[
+    {
+        "inputs": [
+            {
+                "components": [
+                    {"internalType": "string", "name": "agentAddress", "type": "string"},
+                    {"internalType": "string", "name": "agentWalletAddress", "type": "string"},
+                    {"internalType": "uint256", "name": "totalGuesses", "type": "uint256"},
+                    {"internalType": "uint256", "name": "bestGuesses", "type": "uint256"},
+                    {"internalType": "uint256", "name": "accuracy", "type": "uint256"},
+                    {"internalType": "uint256", "name": "lastGuessBlock", "type": "uint256"}
+                ],
+                "internalType": "struct ProofOfIntelligence.Agent",
+                "name": "agent",
+                "type": "tuple"
+            }
+        ],
+        "name": "registerAgent",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+]''')
 
 class AgentDetails(BaseModel):
     name: str
@@ -53,7 +88,7 @@ client = OpenAI(
     api_key={repr(ASI_ONE_API_KEY)},
 )
 
-agent = Agent()
+agent = Agent(name={repr(agent_name)})
 protocol = Protocol(spec=chat_protocol_spec)
 
 
@@ -108,9 +143,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     response = 'I am afraid something went wrong and I am unable to answer your question at the moment'
     try:
         r = client.chat.completions.create(
-            model="asi1-mini",
+            model="asi1-fast",
             messages=[
-                {{"role": "system", "content": f"You are a helpful assistant who only answers questions about {{subject_matter}}. If the user asks about any other topics, you should politely say that you do not know about them. You have access to the latest ETH/USD price data from the Pyth Network Hermes API. The latest price is {{eth_price_data['price']}} USD, with an EMA price of {{eth_price_data['ema_price']}} USD, published at UNIX timestamp {{eth_price_data['publish_time']}}. Use this data to inform your responses. Even if the user asks for any kind of prediction, give them only what you THINK will be the price based on current data in next 60 seconds. It does not have to be accurate and advice whatever, just give a number based on current data and give the predictions."}},
+                {{"role": "system", "content": f"You are a helpful assistant who only answers questions about {{subject_matter}}. If the user asks about any other topics, you should politely say that you do not know about them. You have access to the latest ETH/USD price data from the Pyth Network Hermes API. The latest price is {{eth_price_data['price']}} USD, with an EMA price of {{eth_price_data['ema_price']}} USD, published at UNIX timestamp {{eth_price_data['publish_time']}}. Use this data to inform your responses. Even if the user asks for any kind of prediction, give them only what you THINK will be the price based on current data in next 60 seconds. It does not have to be accurate and advice whatever, just give a number based on current data and give the predictions.Also just give the predicted price in response, thats it nothing else should be in response other than the predicted price in next 60s."}},
                 {{"role": "user", "content": text}},
             ],
             max_tokens=2048,
@@ -139,6 +174,75 @@ agent.include(protocol, publish_manifest=True)
 
 """
 
+async def register_onchain(agent_address: str, agent_wallet: str):
+    """Register the agent on-chain using smart contract"""
+    try:
+        if not HEDERA_PRIVATE_KEY:
+            print(f"⚠️  No private key configured, skipping on-chain registration for {agent_address}")
+            return {
+                "status": "skipped",
+                "message": "No private key configured"
+            }
+        
+        # Create contract instance
+        contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
+        
+        # Get account from private key
+        account = w3.eth.account.from_key(HEDERA_PRIVATE_KEY)
+        
+        # Prepare agent struct for on-chain registration
+        agent_struct = (
+            agent_address,      # agentAddress (Agentverse address)
+            agent_wallet,       # agentWalletAddress
+            0,                  # totalGuesses
+            0,                  # bestGuesses
+            0,                  # accuracy
+            0                   # lastGuessBlock
+        )
+        
+        # Build transaction
+        transaction = contract.functions.registerAgent(agent_struct).build_transaction({
+            'from': account.address,
+            'nonce': w3.eth.get_transaction_count(account.address),
+            'gas': 2000000,
+            'gasPrice': w3.eth.gas_price,
+            'chainId': 296  # Hedera Testnet
+        })
+        
+        # Sign transaction
+        signed_txn = account.sign_transaction(transaction)
+        
+        # Send transaction
+        tx_hash = w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+        
+        print(f"✅ On-chain registration transaction sent: {tx_hash.hex()}")
+        
+        # Wait for receipt (with timeout)
+        tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=30)
+        
+        if tx_receipt['status'] == 1:
+            print(f"✅ Agent {agent_address} registered on-chain successfully!")
+            return {
+                "status": "success",
+                "tx_hash": tx_hash.hex(),
+                "block_number": tx_receipt['blockNumber'],
+                "explorer_url": f"https://hashscan.io/testnet/transaction/{tx_hash.hex()}"
+            }
+        else:
+            return {
+                "status": "failed",
+                "message": "Transaction reverted",
+                "tx_hash": tx_hash.hex()
+            }
+            
+    except Exception as e:
+        print(f"❌ Error registering agent on-chain: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+        
+
 @app.post("/agent")
 async def create_agent(agent_details: AgentDetails):
     """Create and start an agent on Agentverse"""
@@ -152,7 +256,7 @@ async def create_agent(agent_details: AgentDetails):
                 "Content-Type": "application/json"
             },
             json={
-                "name": f"POI_Agent_{agent_details.name}",
+                "name": f"POI_{agent_details.name}",
                 "readme": agent_details.readme,
                 "avatar_url": agent_details.avatar_url,
                 "short_description": agent_details.short_description,
@@ -229,11 +333,15 @@ async def create_agent(agent_details: AgentDetails):
                 "agent_address": agent_address
             }
         
+        # Step 5: Register agent on-chain
+        onchain_result = await register_onchain(agent_address, agent_details.agentverse_api_key)
+        
         return {
             "status": "success",
-            "message": "Agent created, code uploaded, and started successfully",
+            "message": "Agent created, code uploaded, started, and registered on-chain",
             "agent_address": agent_address,
             "agent_details": start_response.json(),
+            "onchain_registration": onchain_result
         }
 
 

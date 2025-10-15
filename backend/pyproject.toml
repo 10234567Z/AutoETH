@@ -10,4 +10,5 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "uagents>=0.22.10",
     "uvicorn>=0.37.0",
+    "web3>=7.6.0",
 ]

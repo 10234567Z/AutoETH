@@ -24,3 +24,5 @@ coverage
 *.dll
 *.so
 __pycache__
+
+test-*
