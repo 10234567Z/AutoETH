@@ -1,26 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.30;
 
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 
 contract ProofOfIntelligence {
-    // TODO: Implement following logic
-    // pyth price feeder function
-    // Tx validator for mempool
-    // agent prediction checker
-    // updating onchain stats
-    // 	leaderboard
-    // 	agent-specific
-    // 	loggin
-    // 	events for frontend
-    // getter functions
-    // 	agent-specific
-    // 	leaderboard
-    // 	recentmost log
-    // 	recentmost guess
-    // 	recentmost block mined
-    //  mempool txs
 
     address contractAddress = 0x4305FB66699C3B2702D4d05CF36551390A4c69C6;
     IPyth pyth = IPyth(contractAddress);
