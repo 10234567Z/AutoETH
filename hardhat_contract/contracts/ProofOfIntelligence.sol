@@ -71,6 +71,15 @@ contract ProofOfIntelligence {
         bool finalized;
         string winnerAgent;
         int256 actualPrice;
+        string[] participants; // Track who submitted predictions
+    }
+
+    struct PredictionHistory {
+        uint256 roundId;
+        int256 predicted;
+        int256 actual;
+        int256 difference;
+        uint256 timestamp;
     }
 
     uint256 public constant ROUND_DURATION = 60;
@@ -82,6 +91,10 @@ contract ProofOfIntelligence {
     mapping(uint256 => Block) public blockchain;
     mapping(uint256 => PredictionRound) public predictionRounds;
     mapping(uint256 => mapping(string => Prediction)) public roundPredictions;
+    
+    // Self-learning mappings
+    mapping(string => PredictionHistory[]) public agentHistory;
+    mapping(string => int256) public agentBias; // Average over/under prediction
 
     uint256 public current_mempool = 1;
 
@@ -123,6 +136,13 @@ contract ProofOfIntelligence {
         uint256 indexed roundId,
         string winner,
         int256 actualPrice
+    );
+    event HistoryRecorded(
+        string indexed agentAddress,
+        uint256 roundId,
+        int256 predicted,
+        int256 actual,
+        int256 difference
     );
 
     constructor() {
@@ -233,7 +253,7 @@ contract ProofOfIntelligence {
         }
 
         // Update the price onchain
-        updatePythPrice(pythPriceUpdate, priceFeedId);
+        updatePythPrice(pythPriceUpdate[0], priceFeedId);
 
 
         // Get actual price from Pyth and consuming it in the contract
@@ -242,12 +262,33 @@ contract ProofOfIntelligence {
         round.actualPrice = actualPrice;
         round.finalized = true;
 
-        // TODO: Determine winner (agent with closest prediction)
+        // Determine winner (agent with closest prediction)
         string memory winner = _determineWinner(
             currentPredictionRound,
             actualPrice
         );
         round.winnerAgent = winner;
+
+        // Record prediction history for all participants
+        for (uint256 i = 0; i < round.participants.length; i++) {
+            string memory agentAddr = round.participants[i];
+            Prediction storage pred = roundPredictions[currentPredictionRound][agentAddr];
+            
+            if (pred.submitted) {
+                // Record history
+                _recordPredictionHistory(
+                    agentAddr,
+                    currentPredictionRound,
+                    int64(pred.predictedPrice),
+                    int64(actualPrice)
+                );
+                
+                // Update agent stats
+                agents[agentAddr].totalGuesses++;
+                _updateAgentBias(agentAddr);
+                _updateAgentAccuracy(agentAddr);
+            }
+        }
 
         // Mine the block
         _mineBlock(winner, actualPrice);
@@ -263,15 +304,15 @@ contract ProofOfIntelligence {
     function _startNewRound() internal {
         currentPredictionRound++;
 
-        predictionRounds[currentPredictionRound] = PredictionRound({
-            forBlockNumber: currentBlockNumber + 1,
-            startTime: block.timestamp,
-            submissionDeadline: block.timestamp + SUBMISSION_WINDOW,
-            predictionCount: 0,
-            finalized: false,
-            winnerAgent: "",
-            actualPrice: 0
-        });
+        PredictionRound storage newRound = predictionRounds[currentPredictionRound];
+        newRound.forBlockNumber = currentBlockNumber + 1;
+        newRound.startTime = block.timestamp;
+        newRound.submissionDeadline = block.timestamp + SUBMISSION_WINDOW;
+        newRound.predictionCount = 0;
+        newRound.finalized = false;
+        newRound.winnerAgent = "";
+        newRound.actualPrice = 0;
+        // participants array is automatically initialized as empty
 
         emit PredictionRoundStarted(
             currentPredictionRound,
@@ -370,7 +411,7 @@ contract ProofOfIntelligence {
         updateData[0] = priceData;
         uint feeAmount = pyth.getUpdateFee(updateData);
         try pyth.updatePriceFeeds{value: feeAmount}(updateData) {
-            (int256 price, uint256 publishTime) = readPythPrice(priceFeed);
+            (int256 price, ) = readPythPrice(priceFeed);
             emit PriceFeedUpdatedOnChainPyth(price);
         } catch {
             revert POI__PythUpdateFailed();
@@ -388,5 +429,139 @@ contract ProofOfIntelligence {
         );
         mempoolTxs[mempoolId].isValidated = isValid;
         current_mempool++;
+    }
+
+    // Determine winner: agent with closest prediction to actual price
+    function _determineWinner(
+        uint256 roundId,
+        int256 actualPrice
+    ) internal view returns (string memory) {
+        PredictionRound storage round = predictionRounds[roundId];
+        require(round.participants.length > 0, "No participants in round");
+
+        string memory winner;
+        uint256 smallestDiff = type(uint256).max;
+
+        for (uint256 i = 0; i < round.participants.length; i++) {
+            string memory agentAddr = round.participants[i];
+            Prediction storage pred = roundPredictions[roundId][agentAddr];
+
+            if (!pred.submitted) continue;
+
+            // Calculate absolute difference
+            uint256 diff;
+            if (pred.predictedPrice > actualPrice) {
+                diff = uint256(int256(pred.predictedPrice - actualPrice));
+            } else {
+                diff = uint256(int256(actualPrice - pred.predictedPrice));
+            }
+
+            if (diff < smallestDiff) {
+                smallestDiff = diff;
+                winner = agentAddr;
+            }
+        }
+
+        require(bytes(winner).length > 0, "No valid winner found");
+        return winner;
+    }
+
+    // Record prediction history for self-learning
+    function _recordPredictionHistory(
+        string memory agentAddr,
+        uint256 roundId,
+        int64 predicted,
+        int64 actual
+    ) internal {
+        int256 difference = int256(predicted - actual);
+        
+        PredictionHistory memory history = PredictionHistory({
+            roundId: roundId,
+            predicted: predicted,
+            actual: actual,
+            difference: difference,
+            timestamp: block.timestamp
+        });
+
+        agentHistory[agentAddr].push(history);
+        emit HistoryRecorded(agentAddr, roundId, predicted, actual, difference);
+    }
+
+    // Update agent's bias (tendency to over/under predict)
+    function _updateAgentBias(string memory agentAddr) internal {
+        PredictionHistory[] storage history = agentHistory[agentAddr];
+        if (history.length == 0) return;
+
+        int256 totalBias = 0;
+        uint256 count = history.length > 10 ? 10 : history.length; // Last 10 predictions
+
+        for (uint256 i = history.length - count; i < history.length; i++) {
+            totalBias += history[i].difference;
+        }
+
+        agentBias[agentAddr] = totalBias / int256(count);
+    }
+
+    // Update agent accuracy percentage
+    function _updateAgentAccuracy(string memory agentAddr) internal {
+        Agent storage agent = agents[agentAddr];
+        if (agent.totalGuesses == 0) return;
+
+        agent.accuracy = (agent.bestGuesses * 100) / agent.totalGuesses;
+    }
+
+    // Getter: Get full agent prediction history
+    function getAgentHistory(string memory agentAddr) 
+        external 
+        view 
+        returns (PredictionHistory[] memory) 
+    {
+        return agentHistory[agentAddr];
+    }
+
+    // Getter: Get recent N predictions
+    function getAgentRecentHistory(string memory agentAddr, uint256 count) 
+        external 
+        view 
+        returns (PredictionHistory[] memory) 
+    {
+        PredictionHistory[] storage fullHistory = agentHistory[agentAddr];
+        uint256 returnCount = count > fullHistory.length ? fullHistory.length : count;
+        
+        PredictionHistory[] memory recent = new PredictionHistory[](returnCount);
+        uint256 startIdx = fullHistory.length - returnCount;
+        
+        for (uint256 i = 0; i < returnCount; i++) {
+            recent[i] = fullHistory[startIdx + i];
+        }
+        
+        return recent;
+    }
+
+    // Getter: Get agent bias value
+    function getAgentBias(string memory agentAddr) external view returns (int256) {
+        return agentBias[agentAddr];
+    }
+
+    // Getter: Get comprehensive agent statistics
+    function getAgentStats(string memory agentAddr) 
+        external 
+        view 
+        returns (
+            uint256 totalGuesses,
+            uint256 bestGuesses,
+            uint256 accuracy,
+            int256 bias,
+            uint256 historyLength
+        ) 
+    {
+        Agent storage agent = agents[agentAddr];
+        return (
+            agent.totalGuesses,
+            agent.bestGuesses,
+            agent.accuracy,
+            agentBias[agentAddr],
+            agentHistory[agentAddr].length
+        );
     }
 }
