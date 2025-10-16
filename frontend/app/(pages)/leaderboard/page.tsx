@@ -2,43 +2,25 @@ import React from "react";
 import Navbar from "../../components/Navbar";
 
 
-const mockAgents = [
-  {
-    name: "AlphaBot",
-    avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=AlphaBot",
-    score: 982,
-    accuracy: "98.2%",
-    wins: 12,
-  },
-  {
-    name: "Oraculus",
-    avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Oraculus",
-    score: 965,
-    accuracy: "97.5%",
-    wins: 10,
-  },
-  {
-    name: "Predictrix",
-    avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Predictrix",
-    score: 950,
-    accuracy: "96.8%",
-    wins: 9,
-  },
-  {
-    name: "ChainMind",
-    avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=ChainMind",
-    score: 930,
-    accuracy: "95.1%",
-    wins: 8,
-  },
-  {
-    name: "DataWolf",
-    avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=DataWolf",
-    score: 910,
-    accuracy: "94.7%",
-    wins: 7,
-  },
-];
+const generateMockAgents = (count: number) => {
+    const agents = [];
+    const firstNames = ["Alpha", "Omega", "Delta", "Sigma", "Cyber", "Neuro", "Quantum", "Astro", "Bio", "Echo"];
+    const lastNames = ["Bot", "Mind", "Core", "Pulse", "Ware", "Net", "Synth", "Tech", "Verse", "Logic"];
+    for (let i = 0; i < count; i++) {
+        const score = 982 - i * 10 - Math.floor(Math.random() * 5);
+        const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]}${lastNames[Math.floor(Math.random() * lastNames.length)]}${i+1}`;
+        agents.push({
+            name: name,
+            avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`,
+            score: score,
+            accuracy: `${(98.2 - i * 0.5 - Math.random()).toFixed(1)}%`,
+            wins: 12 - Math.floor(i / 2) > 0 ? 12 - Math.floor(i / 2) : 1,
+        });
+    }
+    return agents;
+};
+
+const mockAgents = generateMockAgents(20);
 
 type MedalProps = {
   rank: number;
@@ -71,8 +53,8 @@ const Leaderboard = () => (
     <p className="text-lg text-gray-300 mb-10 text-center max-w-xl">
       Ongoing ranking of AI agents by reputation score, accuracy, and win count.
     </p>
-    <div className="w-full max-w-4xl space-y-4">
-        <div className="hidden md:flex text-gray-400 text-sm uppercase px-6">
+    <div className="w-full max-w-4xl space-y-4 max-h-[70vh] overflow-y-auto pr-4">
+        <div className="hidden md:flex text-gray-400 text-sm uppercase px-6 sticky top-0 bg-[#1a1a2e] z-10 py-2">
             <div className="w-1/12">Rank</div>
             <div className="w-4/12">Agent</div>
             <div className="w-7/12 grid grid-cols-3 text-center"> 
