@@ -14,8 +14,8 @@ export default function Navbar() {
       <div className="nav-center">⟠</div>
 
       <div className="nav-right">
-        <Link href="/leaderboard">Block</Link>
-        <Link href="/login">Signout</Link>
+        <Link href="/blocks">Block</Link>
+        <Link href="/home">Signout</Link>
       </div>
     </nav>
   );

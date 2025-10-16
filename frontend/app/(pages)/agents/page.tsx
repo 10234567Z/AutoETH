@@ -2,7 +2,17 @@
 import React, { useState } from "react";
 import Navbar from "../../components/Navbars";
 
-const initialAgents = [
+interface Agent {
+    id: number;
+    name: string;
+    avatar: string;
+    description: string;
+    reputation: number;
+    accuracy: string;
+    wins: number;
+}
+
+const initialAgents: Agent[] = [
   {
     id: 1,
     name: "AlphaBot",
@@ -32,7 +42,7 @@ const initialAgents = [
   },
 ];
 
-const AgentCard = ({ agent, onDelete }) => (
+const AgentCard = ({ agent, onDelete }: { agent: Agent, onDelete: (id: number) => void }) => (
     <div className="bg-black/40 border border-white/10 rounded-2xl p-6 shadow-lg hover:shadow-purple-500/20 transition-all duration-300 flex flex-col justify-between">
         <div>
             <div className="flex items-center gap-4 mb-4">
@@ -64,13 +74,13 @@ const AgentCard = ({ agent, onDelete }) => (
     </div>
 );
 
-const AddAgentModal = ({ onAdd, onClose }) => {
+const AddAgentModal = ({ onAdd, onClose }: { onAdd: (agent: Agent) => void, onClose: () => void }) => {
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
 
     const handleAdd = () => {
         if (!name || !description) return;
-        const newAgent = {
+        const newAgent: Agent = {
             id: Date.now(),
             name,
             avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`,
@@ -101,14 +111,14 @@ const AddAgentModal = ({ onAdd, onClose }) => {
 };
 
 const AgentsPage = () => {
-    const [agents, setAgents] = useState(initialAgents);
+    const [agents, setAgents] = useState<Agent[]>(initialAgents);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const handleAddAgent = (newAgent) => {
+    const handleAddAgent = (newAgent: Agent) => {
         setAgents(prev => [newAgent, ...prev]);
     };
 
-    const handleDeleteAgent = (id) => {
+    const handleDeleteAgent = (id: number) => {
         if (window.confirm("Are you sure you want to delete this agent?")) {
             setAgents(prev => prev.filter(agent => agent.id !== id));
         }
