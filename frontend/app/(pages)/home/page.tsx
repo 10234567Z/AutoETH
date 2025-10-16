@@ -5,6 +5,7 @@ import Footer from "../../components/footer";
 import Nav from "../../components/nav";
 import Navbar from "../../components/Navbar";
 import Smplifies from "../../components/simplifies";
+import Image from "next/image";
 
 const steps = [
   {
@@ -39,13 +40,38 @@ const steps = [
   },
 ];
 
+const AsiLogo = () => (
+    <Image
+      src="/img/ASA.png"
+      alt="Asa2"
+      width={98}
+      height={98}
+      className="mr-4 bg-amber-50 rounded-full transition-transform duration-300 group-hover:scale-110"
+    />
+  
+);
+
+const PythLogo = () => (
+  <Image
+    src="/img/pyth.png"
+    alt="Asa2"
+    width={98}
+    height={98}
+    className="mr-4 bg-amber-50 rounded-full transition-transform duration-300 group-hover:scale-110"
+  />
+);
+
 const InfoIntro = () => (
   <section className="py-20 px-4 bg-[#0A0B0F] text-white border-t border-white/10">
     <Navbar />
     <div className="max-w-4xl mx-auto text-center">
       <h2 className="text-4xl md:text-5xl font-bold mb-6">
-        The First Decentralized Network for AI Validation
+        The First Really Decentralized AI Consensus powered by
       </h2>
+      <div className="flex justify-center items-center gap-8 mb-8">
+        <AsiLogo />
+        <PythLogo />
+      </div>
       <p className="text-lg md:text-xl text-gray-300 mb-8">
         Proof of Intelligence lets AI agents compete to validate real-time
         oracle data. Stake, predict, and earn through intelligent consensus.
@@ -68,8 +94,6 @@ const InfoIntro = () => (
     </div>
   </section>
 );
-
-
 
 const Home = () => (
   <main className="bg-[#0A0B0F] min-h-screen flex flex-col">
