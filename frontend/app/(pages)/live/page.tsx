@@ -2,8 +2,14 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../../components/Navbar";
 
-const PYTH_API_URL =
-  "https://hermes.pyth.network/v2/updates/price/latest?ids%5B%5D=0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43&ids%5B%5D=0xc96458d393fe9deb7a7d63a0ac41e2898a67a7750dbd166673279e06c868df0a";
+import { getPythPriceUpdateFromEventSource } from "@pythnetwork/pyth-evm-js";
+
+const HERMES_URL = "https://hermes.pyth.network";
+
+const PRICE_IDS = [
+  "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", // ETH/USD
+  "0xc96458d393fe9deb7a7d63a0ac41e2898a67a7750dbd166673279e06c868df0a", // BTC/USD
+];
 
 const PYTH_SYMBOLS: Record<string, string> = {
   "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43":
@@ -29,89 +35,112 @@ function usePythFeed() {
   });
 
   useEffect(() => {
-    async function fetchPythData() {
+    const evtSource = new EventSource(
+      `${HERMES_URL}/v2/updates/price/stream?` +
+        `ids[]=${PRICE_IDS[0]}&ids[]=${PRICE_IDS[1]}`
+    );
+
+    evtSource.onmessage = (event) => {
       try {
-        const res = await fetch(PYTH_API_URL);
-        const json = await res.json();
+        const updates = JSON.parse(event.data);
+        if (!Array.isArray(updates)) return;
 
         const prices = {
-          ETH: { price: 0, updated: "-", change: "0%" },
-          BTC: { price: 0, updated: "-", change: "0%" },
+          ETH: { ...data.ETH },
+          BTC: { ...data.BTC },
         };
 
-        if (json.parsed && Array.isArray(json.parsed)) {
-          for (const update of json.parsed) {
-            const symbol = PYTH_SYMBOLS[update.id];
-            if (!symbol) continue;
+        for (const update of updates) {
+          const symbol = PYTH_SYMBOLS[update.id];
+          if (!symbol) continue;
 
-            const basePrice = update.price.price;
-            const expo = update.price.expo;
-            const price = basePrice * Math.pow(10, expo);
-            const updated = update.price.publish_time
-              ? new Date(update.price.publish_time * 1000).toLocaleTimeString()
-              : "-";
+          const basePrice = update.price.price;
+          const expo = update.price.expo;
+          const price = basePrice * Math.pow(10, expo);
+          const updated = update.price.publish_time
+            ? new Date(update.price.publish_time * 1000).toLocaleTimeString()
+            : "-";
 
-            if (symbol === "ETH/USD")
-              prices.ETH = { price, updated, change: getRandomChange() };
-            if (symbol === "BTC/USD")
-              prices.BTC = { price, updated, change: getRandomChange() };
+          const prevPrice =
+            symbol === "ETH/USD" ? data.ETH.price : data.BTC.price;
+          const change =
+            prevPrice > 0
+              ? (((price - prevPrice) / prevPrice) * 100).toFixed(2) + "%"
+              : "0%";
+
+          if (symbol === "ETH/USD") {
+            prices.ETH = { price, updated, change };
+          }
+          if (symbol === "BTC/USD") {
+            prices.BTC = { price, updated, change };
           }
         }
 
         setData(prices);
       } catch (e) {
-        console.error("Error fetching Pyth data:", e);
+        console.error("Error processing price update:", e);
       }
-    }
+    };
 
-    function getRandomChange() {
-      const val = (Math.random() * 2 - 1).toFixed(2);
-      return `${val}%`;
-    }
+    evtSource.onerror = (error) => {
+      console.error("Error in price feed:", error);
+      evtSource.close();
+    };
 
-    fetchPythData();
-    const interval = setInterval(fetchPythData, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      evtSource.close();
+    };
   }, []);
 
   return data;
 }
 
 const usePredictions = () => {
-    const [predictions, setPredictions] = useState<any[]>([]);
+  const [predictions, setPredictions] = useState<any[]>([]);
 
-    useEffect(() => {
-        const agentNames = ["AlphaBot", "Oraculus", "Predictrix", "ChainMind", "DataWolf"];
-        const currencyPairs = ["ETH/USD", "BTC/USD"];
-        const basePrices: { [key: string]: number } = { "ETH/USD": 3500, "BTC/USD": 60000 };
+  useEffect(() => {
+    const agentNames = [
+      "AlphaBot",
+      "Oraculus",
+      "Predictrix",
+      "ChainMind",
+      "DataWolf",
+    ];
+    const currencyPairs = ["ETH/USD", "BTC/USD"];
+    const basePrices: { [key: string]: number } = {
+      "ETH/USD": 3500,
+      "BTC/USD": 60000,
+    };
 
-        const predictionInterval = setInterval(() => {
-            const agentName = agentNames[Math.floor(Math.random() * agentNames.length)];
-            const currencyPair = currencyPairs[Math.floor(Math.random() * currencyPairs.length)];
-            
-            const basePrice = basePrices[currencyPair];
-            const predictionType = Math.random() > 0.5 ? 'UP' : 'DOWN';
-            const predictedPrice = basePrice * (1 + (Math.random() - 0.49) * 0.02); // +/- 1% of base
+    const predictionInterval = setInterval(() => {
+      const agentName =
+        agentNames[Math.floor(Math.random() * agentNames.length)];
+      const currencyPair =
+        currencyPairs[Math.floor(Math.random() * currencyPairs.length)];
 
-            const newPrediction = {
-                id: Date.now(),
-                agentName,
-                agentAvatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${agentName}`,
-                agentReputation: Math.floor(Math.random() * 200) + 800,
-                currencyPair,
-                predictedPrice,
-                predictionDirection: predictionType,
-                confidence: Math.random() * 0.3 + 0.7, // 70% - 100%
-                stake: Math.floor(Math.random() * 100) + 1,
-                timestamp: Date.now(),
-            };
-            setPredictions(prev => [newPrediction, ...prev.slice(0, 4)]);
-        }, 3000);
+      const basePrice = basePrices[currencyPair];
+      const predictionType = Math.random() > 0.5 ? "UP" : "DOWN";
+      const predictedPrice = basePrice * (1 + (Math.random() - 0.49) * 0.02); // +/- 1% of base
 
-        return () => clearInterval(predictionInterval);
-    }, []);
+      const newPrediction = {
+        id: Date.now(),
+        agentName,
+        agentAvatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${agentName}`,
+        agentReputation: Math.floor(Math.random() * 200) + 800,
+        currencyPair,
+        predictedPrice,
+        predictionDirection: predictionType,
+        confidence: Math.random() * 0.3 + 0.7, // 70% - 100%
+        stake: Math.floor(Math.random() * 100) + 1,
+        timestamp: Date.now(),
+      };
+      setPredictions((prev) => [newPrediction, ...prev.slice(0, 4)]);
+    }, 3000);
 
-    return predictions;
+    return () => clearInterval(predictionInterval);
+  }, []);
+
+  return predictions;
 };
 
 const FeedCard = ({
@@ -163,81 +192,112 @@ const FeedCard = ({
 );
 
 interface Prediction {
-    id: number;
-    agentName: string;
-    agentAvatar: string;
-    agentReputation: number;
-    currencyPair: string;
-    predictedPrice: number;
-    predictionDirection: string;
-    confidence: number;
-    stake: number;
-    timestamp: number;
+  id: number;
+  agentName: string;
+  agentAvatar: string;
+  agentReputation: number;
+  currencyPair: string;
+  predictedPrice: number;
+  predictionDirection: string;
+  confidence: number;
+  stake: number;
+  timestamp: number;
 }
 
 interface Prices {
-    [key: string]: {
-        price: number;
-        updated: string;
-        change: string;
-    };
+  [key: string]: {
+    price: number;
+    updated: string;
+    change: string;
+  };
 }
 
 const LivePredictions = ({
-    predictions,
-    prices,
+  predictions,
+  prices,
 }: {
-    predictions: Prediction[];
-    prices: Prices;
+  predictions: Prediction[];
+  prices: Prices;
 }) => (
-    <div className="w-full max-w-5xl bg-black/30 border border-white/10 rounded-xl p-8 mt-8">
-        <h2 className="text-2xl font-bold text-purple-400 mb-6 text-center">
-          Live Agent Predictions
-        </h2>
-        <div className="space-y-4">
-            <div className="hidden md:grid grid-cols-6 gap-4 text-sm text-gray-400 px-4">
-                <div className="col-span-2">Agent</div>
-                <div>Prediction</div>
-                <div>Live Price</div>
-                <div>Accuracy</div>
-                <div>Stake</div>
+  <div className="w-full max-w-5xl bg-black/30 border border-white/10 rounded-xl p-8 mt-8">
+    <h2 className="text-2xl font-bold text-purple-400 mb-6 text-center">
+      Live Agent Predictions
+    </h2>
+    <div className="space-y-4">
+      <div className="hidden md:grid grid-cols-6 gap-4 text-sm text-gray-400 px-4">
+        <div className="col-span-2">Agent</div>
+        <div>Prediction</div>
+        <div>Live Price</div>
+        <div>Accuracy</div>
+        <div>Stake</div>
+      </div>
+      {predictions.map((p) => {
+        const currency = p.currencyPair.split("/")[0];
+        const livePrice = prices[currency]?.price || 0;
+        const accuracy =
+          livePrice > 0
+            ? 100 - (Math.abs(p.predictedPrice - livePrice) / livePrice) * 100
+            : 100;
+        return (
+          <div
+            key={p.id}
+            className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center bg-black/40 border border-white/10 rounded-lg p-4 animate-fade-in"
+          >
+            <div className="col-span-2 flex items-center gap-3">
+              <img
+                src={p.agentAvatar}
+                alt={p.agentName}
+                className="w-10 h-10 rounded-full border-2 border-purple-500"
+              />
+              <div>
+                <div className="font-bold text-white">{p.agentName}</div>
+                <div className="text-xs text-gray-400">
+                  Rep: {p.agentReputation} | Conf:{" "}
+                  {(p.confidence * 100).toFixed(0)}%
+                </div>
+              </div>
             </div>
-            {predictions.map(p => {
-                const currency = p.currencyPair.split('/')[0];
-                const livePrice = prices[currency]?.price || 0;
-                const accuracy = livePrice > 0 ? 100 - (Math.abs(p.predictedPrice - livePrice) / livePrice * 100) : 100;
-                return (
-                    <div key={p.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center bg-black/40 border border-white/10 rounded-lg p-4 animate-fade-in">
-                        <div className="col-span-2 flex items-center gap-3">
-                            <img src={p.agentAvatar} alt={p.agentName} className="w-10 h-10 rounded-full border-2 border-purple-500"/>
-                            <div>
-                                <div className="font-bold text-white">{p.agentName}</div>
-                                <div className="text-xs text-gray-400">Rep: {p.agentReputation} | Conf: {(p.confidence * 100).toFixed(0)}%</div>
-                            </div>
-                        </div>
-                        <div className="text-center">
-                            <div className={`font-bold text-lg ${p.predictionDirection === 'UP' ? 'text-green-400' : 'text-red-400'}`}>
-                                {p.predictionDirection === 'UP' ? '▲' : '▼'} ${p.predictedPrice.toFixed(2)}
-                            </div>
-                            <div className="text-xs text-gray-500">{p.currencyPair}</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="font-bold text-lg text-white">${livePrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                        </div>
-                        <div className="text-center">
-                            <div className={`font-bold text-lg ${accuracy > 99.9 ? 'text-green-400' : 'text-yellow-400'}`}>{accuracy.toFixed(2)}%</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="font-bold text-lg text-white">{p.stake}</div>
-                            <div className="text-xs text-gray-500">XYZ</div>
-                        </div>
-                    </div>
-                )
-            })}
-        </div>
+            <div className="text-center">
+              <div
+                className={`font-bold text-lg ${
+                  p.predictionDirection === "UP"
+                    ? "text-green-400"
+                    : "text-red-400"
+                }`}
+              >
+                {p.predictionDirection === "UP" ? "▲" : "▼"} $
+                {p.predictedPrice.toFixed(2)}
+              </div>
+              <div className="text-xs text-gray-500">{p.currencyPair}</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-lg text-white">
+                $
+                {livePrice.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </div>
+            </div>
+            <div className="text-center">
+              <div
+                className={`font-bold text-lg ${
+                  accuracy > 99.9 ? "text-green-400" : "text-yellow-400"
+                }`}
+              >
+                {accuracy.toFixed(2)}%
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-lg text-white">{p.stake}</div>
+              <div className="text-xs text-gray-500">XYZ</div>
+            </div>
+          </div>
+        );
+      })}
     </div>
+  </div>
 );
-
 
 const Live = () => {
   const data = usePythFeed();
