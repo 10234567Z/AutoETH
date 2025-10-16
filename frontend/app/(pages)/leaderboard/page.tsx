@@ -27,7 +27,7 @@ type MedalProps = {
 };
 
 const Medal = ({ rank }: MedalProps) => {
-    const colors = {
+    const colors: { [key: number]: { bg: string; text: string; shadow: string; } } = {
       1: { bg: 'bg-yellow-400', text: 'text-yellow-900', shadow: 'shadow-yellow-500/50' },
       2: { bg: 'bg-gray-300', text: 'text-gray-800', shadow: 'shadow-gray-400/50' },
       3: { bg: 'bg-orange-400', text: 'text-orange-900', shadow: 'shadow-orange-500/50' },
@@ -65,7 +65,7 @@ const Leaderboard = () => (
         </div>
       {mockAgents.map((agent, idx) => {
         const rank = idx + 1;
-        const rankColors = {
+        const rankColors: { [key: number]: string } = {
             1: 'border-yellow-400 shadow-yellow-400/20',
             2: 'border-gray-400 shadow-gray-400/20',
             3: 'border-orange-400 shadow-orange-400/20',

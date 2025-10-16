@@ -1,4 +1,6 @@
+"use client";
 import React from "react";
+import Image from "next/image";
 
 const features = [
   {
@@ -115,22 +117,15 @@ const Features = () => (
           </div>
         </div>
 
-        {/* Video Section */}
+        {/* GIF Section */}
         <div className="w-full lg:w-2/5">
-          <div className="relative rounded-2xl overflow-hidden ">
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full h-5/10 object-contain mx-auto my-8 relative z-10"
-            >
-              <source src="/img/bg.mov" type="video/quicktime" />
-              Your browser does not support the video tag.
-            </video>
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 " />
-          </div>
+          <Image
+            src="/img/newbg.gif"
+            alt="AI background"
+            width={400}
+            height={400}
+            className="rounded-2xl"
+          />
         </div>
       </div>
     </div>

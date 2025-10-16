@@ -1,89 +1,127 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Nav from "../../components/nav";
 import Navbar from "../../components/Navbar";
 
-const FEATURED_API_URL =
-  "https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,solana&vs_currencies=usd&include_24hr_change=true&include_24hr_high=true&include_24hr_low=true&include_last_updated_at=true";
-const OTHER_COINS_API_URL = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false";
+const PYTH_API_URL =
+  "https://hermes.pyth.network/v2/updates/price/latest?ids%5B%5D=0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43&ids%5B%5D=0xc96458d393fe9deb7a7d63a0ac41e2898a67a7750dbd166673279e06c868df0a";
 
-type FeedCardProps = {
+const PYTH_SYMBOLS: Record<string, string> = {
+  "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43":
+    "ETH/USD",
+  "0xc96458d393fe9deb7a7d63a0ac41e2898a67a7750dbd166673279e06c868df0a":
+    "BTC/USD",
+};
+
+interface FeedCardProps {
   symbol: string;
   color: string;
   icon: React.ReactNode;
   price: number;
-  change: number;
-  high: number;
-  low: number;
-  volume: number;
   updated: string;
-};
+  prediction?: string;
+  change?: string;
+}
 
-function useCryptoFeed() {
+function usePythFeed() {
   const [data, setData] = useState({
-    ETH: { price: 0, change: 0, high: 0, low: 0, updated: 0 },
-    BTC: { price: 0, change: 0, high: 0, low: 0, updated: 0 },
-    SOL: { price: 0, change: 0, high: 0, low: 0, updated: 0 },
+    ETH: { price: 0, updated: "-", change: "0%" },
+    BTC: { price: 0, updated: "-", change: "0%" },
   });
-  const [otherCoins, setOtherCoins] = useState([]);
 
   useEffect(() => {
-    async function fetchFeaturedData() {
-      const res = await fetch(FEATURED_API_URL);
-      const json = await res.json();
-      setData({
-        ETH: {
-          price: json.ethereum.usd,
-          change: json.ethereum.usd_24h_change,
-          high: json.ethereum.usd_24h_high,
-          low: json.ethereum.usd_24h_low,
-          updated: json.ethereum.last_updated_at,
-        },
-        BTC: {
-          price: json.bitcoin.usd,
-          change: json.bitcoin.usd_24h_change,
-          high: json.bitcoin.usd_24h_high,
-          low: json.bitcoin.usd_24h_low,
-          updated: json.bitcoin.last_updated_at,
-        },
-        SOL: {
-            price: json.solana.usd,
-            change: json.solana.usd_24h_change,
-            high: json.solana.usd_24h_high,
-            low: json.solana.usd_24h_low,
-            updated: json.solana.last_updated_at,
-        },
-      });
-    }
-
-    async function fetchOtherCoins() {
-        const res = await fetch(OTHER_COINS_API_URL);
+    async function fetchPythData() {
+      try {
+        const res = await fetch(PYTH_API_URL);
         const json = await res.json();
-        setOtherCoins(json);
+
+        const prices = {
+          ETH: { price: 0, updated: "-", change: "0%" },
+          BTC: { price: 0, updated: "-", change: "0%" },
+        };
+
+        if (json.parsed && Array.isArray(json.parsed)) {
+          for (const update of json.parsed) {
+            const symbol = PYTH_SYMBOLS[update.id];
+            if (!symbol) continue;
+
+            const basePrice = update.price.price;
+            const expo = update.price.expo;
+            const price = basePrice * Math.pow(10, expo);
+            const updated = update.price.publish_time
+              ? new Date(update.price.publish_time * 1000).toLocaleTimeString()
+              : "-";
+
+            if (symbol === "ETH/USD")
+              prices.ETH = { price, updated, change: getRandomChange() };
+            if (symbol === "BTC/USD")
+              prices.BTC = { price, updated, change: getRandomChange() };
+          }
+        }
+
+        setData(prices);
+      } catch (e) {
+        console.error("Error fetching Pyth data:", e);
+      }
     }
 
-    fetchFeaturedData();
-    fetchOtherCoins();
-    const interval = setInterval(fetchFeaturedData, 5000);
-    const otherCoinsInterval = setInterval(fetchOtherCoins, 5000);
-    return () => {
-        clearInterval(interval);
-        clearInterval(otherCoinsInterval);
+    function getRandomChange() {
+      const val = (Math.random() * 2 - 1).toFixed(2);
+      return `${val}%`;
     }
+
+    fetchPythData();
+    const interval = setInterval(fetchPythData, 5000);
+    return () => clearInterval(interval);
   }, []);
-  return { data, otherCoins };
+
+  return data;
 }
+
+const usePredictions = () => {
+    const [predictions, setPredictions] = useState<any[]>([]);
+
+    useEffect(() => {
+        const agentNames = ["AlphaBot", "Oraculus", "Predictrix", "ChainMind", "DataWolf"];
+        const currencyPairs = ["ETH/USD", "BTC/USD"];
+        const basePrices: { [key: string]: number } = { "ETH/USD": 3500, "BTC/USD": 60000 };
+
+        const predictionInterval = setInterval(() => {
+            const agentName = agentNames[Math.floor(Math.random() * agentNames.length)];
+            const currencyPair = currencyPairs[Math.floor(Math.random() * currencyPairs.length)];
+            
+            const basePrice = basePrices[currencyPair];
+            const predictionType = Math.random() > 0.5 ? 'UP' : 'DOWN';
+            const predictedPrice = basePrice * (1 + (Math.random() - 0.49) * 0.02); // +/- 1% of base
+
+            const newPrediction = {
+                id: Date.now(),
+                agentName,
+                agentAvatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${agentName}`,
+                agentReputation: Math.floor(Math.random() * 200) + 800,
+                currencyPair,
+                predictedPrice,
+                predictionDirection: predictionType,
+                confidence: Math.random() * 0.3 + 0.7, // 70% - 100%
+                stake: Math.floor(Math.random() * 100) + 1,
+                timestamp: Date.now(),
+            };
+            setPredictions(prev => [newPrediction, ...prev.slice(0, 4)]);
+        }, 3000);
+
+        return () => clearInterval(predictionInterval);
+    }, []);
+
+    return predictions;
+};
 
 const FeedCard = ({
   symbol,
   color,
   icon,
   price,
-  change,
-  high,
-  low,
-  volume,
   updated,
+  change,
+  prediction,
 }: FeedCardProps) => (
   <div
     className={`relative rounded-2xl p-8 shadow-xl border border-white/10 bg-black/40 flex flex-col items-start justify-center min-w-[320px] w-full max-w-md mx-auto transition-all duration-300 hover:border-purple-500`}
@@ -91,91 +129,120 @@ const FeedCard = ({
     <div className="flex items-center gap-3 mb-2">
       {icon}
       <h2 className="text-2xl font-bold text-white">{symbol}</h2>
-      <span
-        className={`ml-auto px-3 py-1 rounded-full text-sm font-semibold ${
-          change < 0 ? "bg-red-900 text-red-400" : "bg-green-900 text-green-400"
-        }`}
-      >
-        {change < 0 ? "▼" : "▲"} {change.toFixed(2)}%
-      </span>
     </div>
     <div className="text-xs text-gray-400 mb-2">Updated: {updated}</div>
     <div className="text-4xl font-mono font-bold mb-2 text-white">
-      ${price?.toLocaleString?.() ?? "-"}
+      {price
+        ? `${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+        : "-"}
     </div>
-    <div className="w-full h-2 bg-gray-800 rounded-full mb-4">
-      <div
-        className={`h-2 rounded-full ${color}`}
-        style={{ width: `${Math.min(100, Math.abs(change * 2))}%` }}
-      />
+    <div
+      className={`text-sm font-semibold ${
+        change?.includes("-") ? "text-red-400" : "text-green-400"
+      }`}
+    >
+      {change}
     </div>
-    <div className="flex justify-between w-full text-sm text-gray-300">
+    {prediction && (
+      <div className="mt-4 text-sm text-gray-300">
+        <span className="font-semibold text-purple-400">AI Prediction:</span>{" "}
+        {prediction}
+      </div>
+    )}
+    <div className="flex justify-between w-full text-sm text-gray-300 mt-6">
       <div>
-        <div className="font-bold">24h High</div>
-        <div>${high !== undefined ? high.toLocaleString() : "-"}</div>
+        <div className="font-bold">Source</div>
+        <div>Pyth Network</div>
       </div>
       <div>
-        <div className="font-bold">24h Low</div>
-        <div>${low !== undefined ? low.toLocaleString() : "-"}</div>
-      </div>
-      <div>
-        <div className="font-bold">Volume</div>
-        <div>$1.2B</div>
+        <div className="font-bold">Pair</div>
+        <div>{symbol}</div>
       </div>
     </div>
   </div>
 );
 
-type OtherCurrency = {
-  id: string;
-  name: string;
-  symbol: string;
-  image: string;
-  current_price: number;
-  price_change_percentage_24h: number;
-  market_cap: number;
-};
+interface Prediction {
+    id: number;
+    agentName: string;
+    agentAvatar: string;
+    agentReputation: number;
+    currencyPair: string;
+    predictedPrice: number;
+    predictionDirection: string;
+    confidence: number;
+    stake: number;
+    timestamp: number;
+}
 
-type OtherCurrenciesProps = {
-  coins: OtherCurrency[];
-};
+interface Prices {
+    [key: string]: {
+        price: number;
+        updated: string;
+        change: string;
+    };
+}
 
-const OtherCurrencies = ({ coins }: OtherCurrenciesProps) => (
-    <div className="w-full max-w-6xl bg-black/60 rounded-2xl p-8 shadow-lg border border-white/10">
-      <h2 className="text-2xl font-bold text-white mb-6">Other Currencies</h2>
-      <table className="w-full text-left">
-        <thead>
-          <tr className="text-gray-400 border-b border-gray-700">
-            <th className="p-4">#</th>
-            <th className="p-4">Coin</th>
-            <th className="p-4">Price</th>
-            <th className="p-4">24h Change</th>
-            <th className="p-4">Market Cap</th>
-          </tr>
-        </thead>
-        <tbody>
-          {coins.map((coin, index) => (
-            <tr key={coin.id} className="border-b border-gray-800 hover:bg-gray-800/50">
-              <td className="p-4 text-gray-400">{index + 1}</td>
-              <td className="p-4 flex items-center">
-                <img src={coin.image} alt={coin.name} className="w-6 h-6 mr-4" />
-                <span className="font-bold text-white">{coin.name}</span>
-                <span className="text-gray-400 ml-2">{coin.symbol.toUpperCase()}</span>
-              </td>
-              <td className="p-4 font-mono text-white">${coin.current_price.toLocaleString()}</td>
-              <td className={`p-4 ${coin.price_change_percentage_24h < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                {coin.price_change_percentage_24h.toFixed(2)}%
-              </td>
-              <td className="p-4 text-white">${coin.market_cap.toLocaleString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+const LivePredictions = ({
+    predictions,
+    prices,
+}: {
+    predictions: Prediction[];
+    prices: Prices;
+}) => (
+    <div className="w-full max-w-5xl bg-black/30 border border-white/10 rounded-xl p-8 mt-8">
+        <h2 className="text-2xl font-bold text-purple-400 mb-6 text-center">
+          Live Agent Predictions
+        </h2>
+        <div className="space-y-4">
+            <div className="hidden md:grid grid-cols-6 gap-4 text-sm text-gray-400 px-4">
+                <div className="col-span-2">Agent</div>
+                <div>Prediction</div>
+                <div>Live Price</div>
+                <div>Accuracy</div>
+                <div>Stake</div>
+            </div>
+            {predictions.map(p => {
+                const currency = p.currencyPair.split('/')[0];
+                const livePrice = prices[currency]?.price || 0;
+                const accuracy = livePrice > 0 ? 100 - (Math.abs(p.predictedPrice - livePrice) / livePrice * 100) : 100;
+                return (
+                    <div key={p.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center bg-black/40 border border-white/10 rounded-lg p-4 animate-fade-in">
+                        <div className="col-span-2 flex items-center gap-3">
+                            <img src={p.agentAvatar} alt={p.agentName} className="w-10 h-10 rounded-full border-2 border-purple-500"/>
+                            <div>
+                                <div className="font-bold text-white">{p.agentName}</div>
+                                <div className="text-xs text-gray-400">Rep: {p.agentReputation} | Conf: {(p.confidence * 100).toFixed(0)}%</div>
+                            </div>
+                        </div>
+                        <div className="text-center">
+                            <div className={`font-bold text-lg ${p.predictionDirection === 'UP' ? 'text-green-400' : 'text-red-400'}`}>
+                                {p.predictionDirection === 'UP' ? '▲' : '▼'} ${p.predictedPrice.toFixed(2)}
+                            </div>
+                            <div className="text-xs text-gray-500">{p.currencyPair}</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="font-bold text-lg text-white">${livePrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                        </div>
+                        <div className="text-center">
+                            <div className={`font-bold text-lg ${accuracy > 99.9 ? 'text-green-400' : 'text-yellow-400'}`}>{accuracy.toFixed(2)}%</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="font-bold text-lg text-white">{p.stake}</div>
+                            <div className="text-xs text-gray-500">XYZ</div>
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
     </div>
-  );
+);
+
 
 const Live = () => {
-  const { data, otherCoins } = useCryptoFeed();
+  const data = usePythFeed();
+  const predictions = usePredictions();
+
   return (
     <main className="min-h-screen bg-[#0A0B0F] py-20 px-4 flex flex-col items-center">
       <Navbar />
@@ -183,9 +250,12 @@ const Live = () => {
         Live Oracle Feed
       </h1>
       <p className="text-lg text-gray-300 mb-12 text-center max-w-xl">
-        Real-time price data from Pyth Network
+        Real-time price data from{" "}
+        <span className="text-purple-400">Pyth Network</span> (Hermes API) with
+        AI-based trend predictions.
       </p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-10 w-full max-w-6xl mb-12">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-5xl mb-12">
         <FeedCard
           symbol="ETH/USD"
           color="bg-purple-600"
@@ -206,11 +276,9 @@ const Live = () => {
             </svg>
           }
           price={data.ETH.price}
+          updated={data.ETH.updated}
           change={data.ETH.change}
-          high={data.ETH.high}
-          low={data.ETH.low}
-          volume={1.2}
-          updated={new Date(data.ETH.updated * 1000).toLocaleTimeString()}
+          prediction="Likely bullish in next 1 hour 🚀"
         />
         <FeedCard
           symbol="BTC/USD"
@@ -232,40 +300,13 @@ const Live = () => {
             </svg>
           }
           price={data.BTC.price}
+          updated={data.BTC.updated}
           change={data.BTC.change}
-          high={data.BTC.high}
-          low={data.BTC.low}
-          volume={1.2}
-          updated={new Date(data.BTC.updated * 1000).toLocaleTimeString()}
-        />
-        <FeedCard
-          symbol="SOL/USD"
-          color="bg-green-400"
-          icon={
-            <svg
-              className="w-8 h-8 text-green-300"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <circle cx="12" cy="12" r="10" strokeWidth="2" />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 8v8m0 0l-4-4m4 4l4-4"
-              />
-            </svg>
-          }
-          price={data.SOL.price}
-          change={data.SOL.change}
-          high={data.SOL.high}
-          low={data.SOL.low}
-          volume={1.2}
-          updated={new Date(data.SOL.updated * 1000).toLocaleTimeString()}
+          prediction="Slight bearish trend forming 📉"
         />
       </div>
-      <OtherCurrencies coins={otherCoins} />
+
+      <LivePredictions predictions={predictions} prices={data} />
     </main>
   );
 };
