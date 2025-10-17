@@ -66,8 +66,8 @@ contract ProofOfIntelligence {
         uint256 timestamp;
     }
 
-    uint256 public constant ROUND_DURATION = 60;
-    uint256 public constant SUBMISSION_WINDOW = 50;
+    uint256 public constant ROUND_DURATION = 30;
+    uint256 public constant SUBMISSION_WINDOW = 30;
 
     uint256 public currentBlockNumber;
     uint256 public currentPredictionRound;
@@ -175,15 +175,13 @@ contract ProofOfIntelligence {
         string memory agentAddress,
         int256 predictedPrice
     ) external onlyRegisteredAgent(agentAddress) {
+        require(currentPredictionRound > 0, "No active round");
+        
         PredictionRound storage round = predictionRounds[
             currentPredictionRound
         ];
 
-        // Auto-start new round if needed
-        if (currentPredictionRound == 0 || round.finalized) {
-            _startNewRound();
-            round = predictionRounds[currentPredictionRound];
-        }
+        require(!round.finalized, "Round already finalized");
 
         // Check if within submission window
         require(
@@ -204,6 +202,7 @@ contract ProofOfIntelligence {
         });
 
         round.predictionCount++;
+        round.participants.push(agentAddress);
         agents[agentAddress].totalGuesses++;
         agents[agentAddress].lastGuessBlock = block.number;
 
@@ -214,11 +213,21 @@ contract ProofOfIntelligence {
         );
     }
 
+    // Manually start a new prediction round (called by judging agent)
+    function startNewRound() external {
+        require(current_mempool >= 1, "Need at least 1 mempool transaction");
+        require(
+            currentPredictionRound == 0 || predictionRounds[currentPredictionRound].finalized,
+            "Round still active"
+        );
+        _startNewRound();
+    }
+
     // Judge predictions and mine the block
     function finalizeRoundAndMineBlock(
         bytes[] memory pythPriceUpdate,
         bytes32 priceFeedId
-    ) external {
+    ) external payable {
         PredictionRound storage round = predictionRounds[
             currentPredictionRound
         ];
@@ -390,7 +399,7 @@ contract ProofOfIntelligence {
     function updatePythPrice(
         bytes memory priceData,
         bytes32 priceFeed
-    ) public  {
+    ) public payable {
         bytes[] memory updateData = new bytes[](1);
         updateData[0] = priceData;
         uint feeAmount = pyth.getUpdateFee(updateData);
@@ -547,5 +556,30 @@ contract ProofOfIntelligence {
             agentBias[agentAddr],
             agentHistory[agentAddr].length
         );
+    }
+
+    // ===== TESTING/MOCK FUNCTIONS =====
+    
+    // Submit a mock mempool transaction (for testing)
+    function submitMockMempoolTx(uint256 gasPrice) external {
+        TxData memory txData = TxData({
+            txHash: address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, current_mempool))))),
+            gasPrice: gasPrice,
+            blockNumber: block.number
+        });
+        
+        mempoolTxs[current_mempool] = Mempool(
+            txData,
+            txData.gasPrice,
+            txData.blockNumber,
+            false
+        );
+        current_mempool++;
+        emit NewMempoolTx(txData.txHash, txData.gasPrice, txData.blockNumber);
+    }
+
+    // Get current mempool count (for testing)
+    function getCurrentMempoolCount() external view returns (uint256) {
+        return current_mempool - 1; // current_mempool starts at 1, so count is current-1
     }
 }

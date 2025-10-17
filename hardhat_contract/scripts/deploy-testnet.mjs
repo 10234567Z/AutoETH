@@ -1,5 +1,5 @@
 import hre from "hardhat";
-import { createWalletClient, http, parseEther } from "viem";
+import { createWalletClient, createPublicClient, http, parseEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { defineChain } from "viem";
 
@@ -33,6 +33,11 @@ async function main() {
     chain: hederaTestnet,
     transport: http(),
   });
+  
+  const publicClient = createPublicClient({
+    chain: hederaTestnet,
+    transport: http(),
+  });
 
   console.log("📋 Deployer:", account.address);
   
@@ -43,8 +48,13 @@ async function main() {
   });
   
   console.log("📤 Deploy tx:", hash);
+  console.log("⏳ Waiting for confirmation...");
+  
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  
   console.log("✅ Contract deployed!");
-  console.log("🔗 Explorer: https://hashscan.io/testnet");
+  console.log("📍 Address:", receipt.contractAddress);
+  console.log("🔗 Explorer: https://hashscan.io/testnet/contract/" + receipt.contractAddress);
 }
 
 main().catch(console.error);
