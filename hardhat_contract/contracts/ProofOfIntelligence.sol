@@ -4,10 +4,22 @@ pragma solidity 0.8.30;
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 
+interface IPOIToken {
+    function mint(address to, uint256 amount) external;
+    function transfer(address to, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+
 contract ProofOfIntelligence {
 
     address contractAddress = 0xDd24F84d36BF92C65F92307595335bdFab5Bbd21;
     IPyth pyth = IPyth(contractAddress);
+    
+    IPOIToken public poiToken;
+    
+    // Reward amounts in POI tokens (18 decimals)
+    uint256 public constant WINNER_REWARD = 100 * 10**18; // 100 POI
+    uint256 public constant PARTICIPANT_REWARD = 10 * 10**18; // 10 POI
 
     struct Agent {
         string agentAddress;
@@ -79,6 +91,9 @@ contract ProofOfIntelligence {
     // Self-learning mappings
     mapping(string => PredictionHistory[]) public agentHistory;
     mapping(string => int256) public agentBias; // Average over/under prediction
+    
+    // Rewards mappings
+    mapping(string => uint256) public pendingRewards; // Agent address => pending POI tokens
 
     uint256 public current_mempool = 1;
 
@@ -91,6 +106,8 @@ contract ProofOfIntelligence {
     error POI__MempoolTxNotExist();
     error POI__PythUpdateFailed();
     error POI__NoNewPriceData();
+    error POI__NoRewardsToClaim();
+    error POI__RewardTransferFailed();
 
     event NewGuess(address indexed agent, bool correct, uint256 blockNumber);
     event AgentRegistered(string indexed agent, string walletAddress);
@@ -128,8 +145,21 @@ contract ProofOfIntelligence {
         int256 actual,
         int256 difference
     );
+    event RewardsDistributed(
+        uint256 indexed roundId,
+        string indexed winner,
+        uint256 winnerReward,
+        uint256 participantReward
+    );
+    event RewardsClaimed(
+        string indexed agentAddress,
+        uint256 amount
+    );
 
-    constructor() {
+    constructor(address _poiTokenAddress) {
+        require(_poiTokenAddress != address(0), "Invalid token address");
+        poiToken = IPOIToken(_poiTokenAddress);
+        
         // Mine genesis block
         _mineGenesisBlock();
     }
@@ -248,10 +278,9 @@ contract ProofOfIntelligence {
         // Try to update price from Pyth
         int256 actualPrice = updatePythPrice(pythPriceUpdate[0], priceFeedId);
         
-        // If Pyth failed (-1), use a default price for testing (2500 USD * 100 = 250000 for 2 decimals)
+        // If Pyth failed (-1), use fallback price for testing (2500 USD * 100 = 250000 for 2 decimals)
         if (actualPrice == -1) {
-            actualPrice = 250000;
-            emit PriceFeedUpdatedOnChainPyth(actualPrice);
+            actualPrice = 250000; // Fallback to reasonable ETH price (~$2500)
         }
 
         round.actualPrice = actualPrice;
@@ -284,6 +313,9 @@ contract ProofOfIntelligence {
                 _updateAgentAccuracy(agentAddr);
             }
         }
+        
+        // Distribute rewards
+        _distributeRewards(currentPredictionRound, winner);
 
         // Mine the block
         _mineBlock(winner, actualPrice);
@@ -587,5 +619,99 @@ contract ProofOfIntelligence {
     // Get current mempool count (for testing)
     function getCurrentMempoolCount() external view returns (uint256) {
         return current_mempool - 1; // current_mempool starts at 1, so count is current-1
+    }
+    
+    // ===== REWARDS SYSTEM =====
+    
+    /**
+     * @dev Distribute rewards to winner and participants after round finalization
+     * @param roundId The round ID
+     * @param winner The winning agent address
+     */
+    function _distributeRewards(uint256 roundId, string memory winner) internal {
+        PredictionRound storage round = predictionRounds[roundId];
+        
+        // Reward the winner
+        pendingRewards[winner] += WINNER_REWARD;
+        
+        // Reward all participants
+        for (uint256 i = 0; i < round.participants.length; i++) {
+            string memory participant = round.participants[i];
+            pendingRewards[participant] += PARTICIPANT_REWARD;
+        }
+        
+        emit RewardsDistributed(roundId, winner, WINNER_REWARD, PARTICIPANT_REWARD);
+    }
+    
+    /**
+     * @dev Claim accumulated rewards
+     * @param agentAddress The agent address claiming rewards
+     */
+    function claimRewards(string memory agentAddress) external {
+        uint256 amount = pendingRewards[agentAddress];
+        
+        if (amount == 0) {
+            revert POI__NoRewardsToClaim();
+        }
+        
+        // Reset pending rewards
+        pendingRewards[agentAddress] = 0;
+        
+        // Mint and transfer POI tokens to agent's wallet
+        address agentWallet = _getAgentWallet(agentAddress);
+        poiToken.mint(agentWallet, amount);
+        
+        emit RewardsClaimed(agentAddress, amount);
+    }
+    
+    /**
+     * @dev Get agent's wallet address
+     * @param agentAddress The agent address
+     * @return The wallet address
+     */
+    function _getAgentWallet(string memory agentAddress) internal view returns (address) {
+        Agent storage agent = agents[agentAddress];
+        require(bytes(agent.agentAddress).length != 0, "Agent not registered");
+        
+        // Convert string wallet address to address type
+        return parseAddress(agent.agentWalletAddress);
+    }
+    
+    /**
+     * @dev Parse string address to address type
+     * @param _a The string address (e.g., "0x1234...")
+     * @return The address
+     */
+    function parseAddress(string memory _a) internal pure returns (address) {
+        bytes memory tmp = bytes(_a);
+        if (tmp.length != 42) return address(0);
+        
+        uint160 iaddr = 0;
+        uint8 b;
+        for (uint i = 2; i < 42; i++) {
+            uint160 iaddr_old = iaddr;
+            iaddr *= 16;
+            b = uint8(tmp[i]);
+            if (b >= 48 && b <= 57) {
+                iaddr += b - 48;
+            } else if (b >= 65 && b <= 70) {
+                iaddr += b - 55;
+            } else if (b >= 97 && b <= 102) {
+                iaddr += b - 87;
+            } else {
+                return address(0);
+            }
+            if (iaddr < iaddr_old) return address(0);
+        }
+        return address(iaddr);
+    }
+    
+    /**
+     * @dev Get pending rewards for an agent
+     * @param agentAddress The agent address
+     * @return The pending reward amount
+     */
+    function getPendingRewards(string memory agentAddress) external view returns (uint256) {
+        return pendingRewards[agentAddress];
     }
 }

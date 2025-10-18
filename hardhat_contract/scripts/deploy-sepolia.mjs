@@ -6,8 +6,9 @@ import { sepolia } from "viem/chains";
 async function main() {
   console.log("🚀 Deploying to Sepolia Testnet...\n");
 
-  // Get artifact
-  const artifact = await hre.artifacts.readArtifact("ProofOfIntelligence");
+  // Get artifacts
+  const poiTokenArtifact = await hre.artifacts.readArtifact("POIToken");
+  const proofOfIntelligenceArtifact = await hre.artifacts.readArtifact("ProofOfIntelligence");
   
   // Setup wallet
   const privateKey = process.env.SEPOLIA_PRIVATE_KEY;
@@ -34,24 +35,63 @@ async function main() {
   const balance = await publicClient.getBalance({ address: account.address });
   console.log("💰 Balance:", (Number(balance) / 1e18).toFixed(4), "ETH\n");
 
-  // Deploy contract
-  console.log("📤 Deploying ProofOfIntelligence...");
+  // Step 1: Deploy POIToken
+  console.log("📤 Deploying POIToken...");
   
-  const hash = await walletClient.deployContract({
-    abi: artifact.abi,
-    bytecode: artifact.bytecode,
+  const poiTokenHash = await walletClient.deployContract({
+    abi: poiTokenArtifact.abi,
+    bytecode: poiTokenArtifact.bytecode,
   });
 
-  console.log("📤 Transaction sent:", hash);
+  console.log("📤 Transaction sent:", poiTokenHash);
   console.log("⏳ Waiting for confirmation...\n");
 
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const poiTokenReceipt = await publicClient.waitForTransactionReceipt({ hash: poiTokenHash });
 
-  console.log("✅ Contract deployed!");
+  console.log("✅ POIToken deployed!");
+  console.log("📍 POIToken Address:", poiTokenReceipt.contractAddress);
+  console.log("🔗 Etherscan:", `https://sepolia.etherscan.io/address/${poiTokenReceipt.contractAddress}`);
+  console.log("🔗 Transaction:", `https://sepolia.etherscan.io/tx/${poiTokenHash}\n`);
+
+  // Step 2: Deploy ProofOfIntelligence with POIToken address
+  console.log("📤 Deploying ProofOfIntelligence...");
+  
+  const proofOfIntelligenceHash = await walletClient.deployContract({
+    abi: proofOfIntelligenceArtifact.abi,
+    bytecode: proofOfIntelligenceArtifact.bytecode,
+    args: [poiTokenReceipt.contractAddress],
+  });
+
+  console.log("📤 Transaction sent:", proofOfIntelligenceHash);
+  console.log("⏳ Waiting for confirmation...\n");
+
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: proofOfIntelligenceHash });
+
+  console.log("✅ ProofOfIntelligence deployed!");
   console.log("📍 Contract Address:", receipt.contractAddress);
   console.log("🔗 Etherscan:", `https://sepolia.etherscan.io/address/${receipt.contractAddress}`);
-  console.log("🔗 Transaction:", `https://sepolia.etherscan.io/tx/${hash}`);
-  console.log("\n📋 Update these addresses in your code:");
+  console.log("🔗 Transaction:", `https://sepolia.etherscan.io/tx/${proofOfIntelligenceHash}\n`);
+  
+  // Step 3: Set ProofOfIntelligence contract in POIToken
+  console.log("🔗 Linking contracts...");
+  
+  const linkHash = await walletClient.writeContract({
+    address: poiTokenReceipt.contractAddress,
+    abi: poiTokenArtifact.abi,
+    functionName: 'setProofOfIntelligenceContract',
+    args: [receipt.contractAddress],
+  });
+  
+  console.log("📤 Transaction sent:", linkHash);
+  console.log("⏳ Waiting for confirmation...\n");
+  
+  await publicClient.waitForTransactionReceipt({ hash: linkHash });
+  
+  console.log("✅ Contracts linked!\n");
+  
+  console.log("📋 Update these addresses in your code:");
+  console.log(`   - POI_TOKEN_ADDRESS = "${poiTokenReceipt.contractAddress}"`);
+  console.log(`   - CONTRACT_ADDRESS = "${receipt.contractAddress}"`);
   console.log(`   - backend/judging_agent.py: CONTRACT_ADDRESS = "${receipt.contractAddress}"`);
   console.log(`   - backend/main.py: CONTRACT_ADDRESS = "${receipt.contractAddress}"`);
   console.log(`   - hardhat_contract/scripts/test-contract.mjs: CONTRACT_ADDRESS = "${receipt.contractAddress}"`);
