@@ -28,6 +28,7 @@ contract ProofOfIntelligence {
         uint256 bestGuesses;
         uint256 accuracy; // percentage of correct guesses
         uint256 lastGuessBlock;
+        uint256 deviation; // Fixed deviation value (0-100) for randomization
     }
 
     struct Mempool {
@@ -255,9 +256,8 @@ contract ProofOfIntelligence {
 
     // Judge predictions and mine the block
     function finalizeRoundAndMineBlock(
-        bytes[] memory pythPriceUpdate,
         bytes32 priceFeedId
-    ) external payable {
+    ) external {
         PredictionRound storage round = predictionRounds[
             currentPredictionRound
         ];
@@ -275,13 +275,9 @@ contract ProofOfIntelligence {
             return;
         }
 
-        // Try to update price from Pyth
-        int256 actualPrice = updatePythPrice(pythPriceUpdate[0], priceFeedId);
-        
-        // If Pyth failed (-1), use fallback price for testing (2500 USD * 100 = 250000 for 2 decimals)
-        if (actualPrice == -1) {
-            actualPrice = 250000; // Fallback to reasonable ETH price (~$2500)
-        }
+        // Read current on-chain price from Pyth
+        (int256 actualPrice, ) = readPythPrice(priceFeedId);
+        require(actualPrice > 0, "Could not get valid price");
 
         round.actualPrice = actualPrice;
         round.finalized = true;
@@ -425,28 +421,9 @@ contract ProofOfIntelligence {
     ) public view returns (int256, uint256) {
         PythStructs.Price memory currentBasePrice = pyth.getPriceNoOlderThan(
             priceFeed,
-            0
+            300 // Allow price up to 5 minutes old
         );
         return (currentBasePrice.price, currentBasePrice.publishTime);
-    }
-
-    function updatePythPrice(
-        bytes memory priceData,
-        bytes32 priceFeed
-    ) public payable returns (int256) {
-        bytes[] memory updateData = new bytes[](1);
-        updateData[0] = priceData;
-        
-        try pyth.updatePriceFeeds{value: msg.value}(updateData) {
-            // If update succeeds, read the price
-            (int256 price, ) = readPythPrice(priceFeed);
-            emit PriceFeedUpdatedOnChainPyth(price);
-            return price;
-        } catch {
-            // If Pyth update fails, use a reasonable fallback price
-            // Return -1 to indicate Pyth failed (caller should handle this)
-            return -1;
-        }
     }
 
     function validateMempool(
