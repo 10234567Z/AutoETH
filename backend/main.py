@@ -1,12 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import uvicorn
 from pydantic import BaseModel
 import os
-from typing import Optional
+from typing import Optional, Dict, List
 from dotenv import load_dotenv
 import httpx
 from web3 import Web3
 import json
+from datetime import datetime
+from pathlib import Path
 
 
 # Load environment variables from .env file
@@ -25,8 +27,87 @@ CONTRACT_ADDRESS = "0xbae9fee9aaffce42b5156c80d5802ba3e0ecb6b7"
 POI_TOKEN_ADDRESS = "0x4e469fa4f69cff67bf0f0f194a2ad41aa71a0eb5"
 SEPOLIA_PRIVATE_KEY = os.getenv("SEPOLIA_PRIVATE_KEY", "0x5c86c08228cbd7f2e7890e8bfe1288ff7f90f64404fa9801f5f80320e44a0e6c")
 
+# Gas tracking configuration
+GAS_TRACKING_FILE = Path("gas_tracking.json")
+INITIAL_STAKE_AMOUNT = 0.1  # ETH
+
 # Initialize Web3
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
+
+# Gas tracking storage
+def load_gas_tracking() -> Dict:
+    """Load gas tracking data from JSON file"""
+    if GAS_TRACKING_FILE.exists():
+        with open(GAS_TRACKING_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_gas_tracking(data: Dict):
+    """Save gas tracking data to JSON file"""
+    with open(GAS_TRACKING_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
+
+def record_gas_deposit(agent_address: str, amount: float = INITIAL_STAKE_AMOUNT):
+    """Record initial gas deposit for an agent"""
+    tracking = load_gas_tracking()
+    tracking[agent_address] = {
+        "staked": amount,
+        "spent": 0.0,
+        "remaining": amount,
+        "transactions": [],
+        "created_at": datetime.now().isoformat()
+    }
+    save_gas_tracking(tracking)
+    return tracking[agent_address]
+
+def record_gas_usage(agent_address: str, tx_hash: str, gas_used: int, gas_price: int):
+    """Record gas usage for a transaction"""
+    tracking = load_gas_tracking()
+    
+    if agent_address not in tracking:
+        # Auto-create with initial stake if not exists
+        tracking[agent_address] = record_gas_deposit(agent_address)
+    
+    # Calculate gas cost in ETH
+    gas_cost_wei = gas_used * gas_price
+    gas_cost_eth = gas_cost_wei / 1e18
+    
+    # Update spent and remaining
+    tracking[agent_address]["spent"] += gas_cost_eth
+    tracking[agent_address]["remaining"] = tracking[agent_address]["staked"] - tracking[agent_address]["spent"]
+    
+    # Add transaction record
+    tracking[agent_address]["transactions"].append({
+        "tx_hash": tx_hash,
+        "gas_used": gas_used,
+        "gas_price": gas_price,
+        "gas_cost_eth": gas_cost_eth,
+        "timestamp": datetime.now().isoformat()
+    })
+    
+    save_gas_tracking(tracking)
+    return tracking[agent_address]
+
+def check_gas_balance(agent_address: str, estimated_gas: int = 500000) -> tuple[bool, float]:
+    """Check if agent has enough balance for estimated gas cost"""
+    tracking = load_gas_tracking()
+    
+    if agent_address not in tracking:
+        return False, 0.0
+    
+    # Estimate gas cost (use current gas price)
+    gas_price = w3.eth.gas_price
+    estimated_cost_eth = (estimated_gas * gas_price) / 1e18
+    
+    remaining = tracking[agent_address]["remaining"]
+    has_enough = remaining >= estimated_cost_eth
+    
+    return has_enough, remaining
+
+def get_gas_stats(agent_address: str) -> Optional[Dict]:
+    """Get gas usage statistics for an agent"""
+    tracking = load_gas_tracking()
+    return tracking.get(agent_address)
 
 # Contract ABI for registerAgent function
 CONTRACT_ABI = json.loads('''[
@@ -277,16 +358,18 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
         price_int = int(float(predicted_price) * 100)
         ctx.logger.info(f"🔢 Price as int: {{price_int}}")
         
-        # Get current nonce
+        # Get current nonce and gas price
         nonce = w3.eth.get_transaction_count(account.address)
+        gas_price = w3.eth.gas_price
         ctx.logger.info(f"🔢 Nonce: {{nonce}}")
+        ctx.logger.info(f"⛽ Gas price: {{gas_price}} wei")
         
         # Build transaction
         transaction = contract.functions.submitPrediction(agent_addr, price_int).build_transaction({{
             'from': account.address,
             'nonce': nonce,
             'gas': 500000,
-            'gasPrice': w3.eth.gas_price,
+            'gasPrice': gas_price,
             'chainId': 11155111  # Sepolia
         }})
         
@@ -296,7 +379,38 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
         signed_txn = account.sign_transaction(transaction)
         tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
         
-        ctx.logger.info(f"✅ TX: {{tx_hash.hex()}}")
+        ctx.logger.info(f"✅ TX sent: {{tx_hash.hex()}}")
+        
+        # Wait for receipt to get actual gas used
+        try:
+            receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+            gas_used = receipt['gasUsed']
+            ctx.logger.info(f"⛽ Gas used: {{gas_used}}")
+            
+            # Record gas usage to backend
+            try:
+                gas_cost_eth = (gas_used * gas_price) / 1e18
+                ctx.logger.info(f"💸 Gas cost: {{gas_cost_eth:.6f}} ETH")
+                
+                # Send gas usage to backend API
+                response = httpx.post(
+                    "http://localhost:3002/internal/record-gas",
+                    json={{
+                        "agent_address": agent_addr,
+                        "tx_hash": tx_hash.hex(),
+                        "gas_used": gas_used,
+                        "gas_price": gas_price
+                    }},
+                    timeout=5.0
+                )
+                if response.status_code == 200:
+                    ctx.logger.info("✅ Gas usage recorded")
+                else:
+                    ctx.logger.warning(f"⚠️ Failed to record gas: {{response.text}}")
+            except Exception as e:
+                ctx.logger.warning(f"⚠️ Could not record gas usage: {{e}}")
+        except Exception as e:
+            ctx.logger.warning(f"⚠️ Could not get receipt: {{e}}")
         
         return tx_hash.hex()
     except Exception as e:
@@ -364,6 +478,30 @@ async def check_and_submit_prediction(ctx: Context):
         deviation_multiplier = 1 - (DEVIATION / 100)
         adjusted_price = predicted_price * deviation_multiplier
         ctx.logger.info(f"📉 Deviation: {{{{DEVIATION}}}}% -> Adjusted: ${{{{adjusted_price:.2f}}}}")
+        
+        # Check gas balance before submitting
+        try:
+            response = httpx.get(f"http://localhost:3002/agent/{{{{AGENT_ADDRESS}}}}/gas-stats", timeout=5.0)
+            if response.status_code == 200:
+                stats = response.json()
+                remaining = stats['stats']['remaining']
+                
+                # Estimate gas cost (500k gas * current gas price)
+                gas_price = w3.eth.gas_price
+                estimated_cost = (500000 * gas_price) / 1e18
+                
+                ctx.logger.info(f"💰 Remaining balance: {{{{remaining:.6f}}}} ETH")
+                ctx.logger.info(f"⛽ Estimated cost: {{{{estimated_cost:.6f}}}} ETH")
+                
+                if remaining < estimated_cost:
+                    ctx.logger.error(f"❌ Insufficient gas balance! Need {{{{estimated_cost:.6f}}}} ETH, have {{{{remaining:.6f}}}} ETH")
+                    return
+                else:
+                    ctx.logger.info("✅ Sufficient gas balance")
+            else:
+                ctx.logger.warning("⚠️ Could not check gas balance, proceeding anyway")
+        except Exception as e:
+            ctx.logger.warning(f"⚠️ Gas balance check failed: {{{{e}}}}, proceeding anyway")
         
         # Submit to blockchain
         tx_hash = submit_prediction_onchain(ctx, AGENT_ADDRESS, adjusted_price)
@@ -574,6 +712,81 @@ def fetch_pyth_hermes():
     except Exception as e:
         print(f"Error fetching Pyth price: {e}")
         return None
+
+
+# Gas Tracking API Endpoints
+
+class GasDepositRequest(BaseModel):
+    agent_address: str
+    amount: float = INITIAL_STAKE_AMOUNT
+
+class GasUsageRecord(BaseModel):
+    agent_address: str
+    tx_hash: str
+    gas_used: int
+    gas_price: int
+
+@app.post("/internal/record-gas")
+async def record_gas_internal(record: GasUsageRecord):
+    """Internal endpoint for agents to record gas usage after transaction"""
+    try:
+        result = record_gas_usage(
+            record.agent_address,
+            record.tx_hash,
+            record.gas_used,
+            record.gas_price
+        )
+        return {
+            "status": "success",
+            "updated_stats": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/agent/gas-deposit")
+async def deposit_gas(request: GasDepositRequest):
+    """Record gas deposit for an agent (called after user sends 0.1 ETH)"""
+    try:
+        result = record_gas_deposit(request.agent_address, request.amount)
+        return {
+            "status": "success",
+            "agent_address": request.agent_address,
+            "deposit": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/agent/{{agent_address}}/gas-stats")
+async def get_agent_gas_stats(agent_address: str):
+    """Get gas usage statistics for a specific agent"""
+    stats = get_gas_stats(agent_address)
+    if not stats:
+        raise HTTPException(status_code=404, detail="Agent not found or no gas deposit recorded")
+    return {
+        "agent_address": agent_address,
+        "stats": stats
+    }
+
+@app.get("/agents/gas-summary")
+async def get_all_gas_summary():
+    """Get gas usage summary for all agents (for dashboard)"""
+    tracking = load_gas_tracking()
+    summary = []
+    
+    for agent_address, data in tracking.items():
+        summary.append({
+            "agent_address": agent_address,
+            "staked": data["staked"],
+            "spent": data["spent"],
+            "remaining": data["remaining"],
+            "tx_count": len(data["transactions"]),
+            "created_at": data.get("created_at", "N/A")
+        })
+    
+    return {
+        "total_agents": len(summary),
+        "agents": summary
+    }
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=3002)
