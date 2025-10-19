@@ -45,9 +45,9 @@ const Hero = () => {
                 </svg>
               </button>
             </Link>
-            <Link href="#learn">
+            <Link href="/dashboard">
               <button className="bg-transparent border-2 border-white text-white px-10 py-4 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out hover:bg-white hover:text-blue-600 transform hover:scale-105">
-                <span>Learn More</span>
+                <span>Dashboard</span>
               </button>
             </Link>
           </div>
