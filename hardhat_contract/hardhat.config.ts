@@ -4,18 +4,11 @@ import { configVariable } from "hardhat/config";
 
 const config: HardhatUserConfig = {
   solidity: {
-    profiles: {
-      default: {
-        version: "0.8.30",
-      },
-      production: {
-        version: "0.8.30",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
+    version: "0.8.30",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1,  // Minimize deployment size
       },
     },
   },
