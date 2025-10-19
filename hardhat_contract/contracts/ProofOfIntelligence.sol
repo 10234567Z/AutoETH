@@ -518,61 +518,6 @@ contract ProofOfIntelligence {
         agent.accuracy = (agent.bestGuesses * 100) / agent.totalGuesses;
     }
 
-    // Getter: Get full agent prediction history
-    function getAgentHistory(string memory agentAddr) 
-        external 
-        view 
-        returns (PredictionHistory[] memory) 
-    {
-        return agentHistory[agentAddr];
-    }
-
-    // Getter: Get recent N predictions
-    function getAgentRecentHistory(string memory agentAddr, uint256 count) 
-        external 
-        view 
-        returns (PredictionHistory[] memory) 
-    {
-        PredictionHistory[] storage fullHistory = agentHistory[agentAddr];
-        uint256 returnCount = count > fullHistory.length ? fullHistory.length : count;
-        
-        PredictionHistory[] memory recent = new PredictionHistory[](returnCount);
-        uint256 startIdx = fullHistory.length - returnCount;
-        
-        for (uint256 i = 0; i < returnCount; i++) {
-            recent[i] = fullHistory[startIdx + i];
-        }
-        
-        return recent;
-    }
-
-    // Getter: Get agent bias value
-    function getAgentBias(string memory agentAddr) external view returns (int256) {
-        return agentBias[agentAddr];
-    }
-
-    // Getter: Get comprehensive agent statistics
-    function getAgentStats(string memory agentAddr) 
-        external 
-        view 
-        returns (
-            uint256 totalGuesses,
-            uint256 bestGuesses,
-            uint256 accuracy,
-            int256 bias,
-            uint256 historyLength
-        ) 
-    {
-        Agent storage agent = agents[agentAddr];
-        return (
-            agent.totalGuesses,
-            agent.bestGuesses,
-            agent.accuracy,
-            agentBias[agentAddr],
-            agentHistory[agentAddr].length
-        );
-    }
-
     // ===== TESTING/MOCK FUNCTIONS =====
     
     // Submit a mock mempool transaction (for testing)
@@ -591,11 +536,6 @@ contract ProofOfIntelligence {
         );
         current_mempool++;
         emit NewMempoolTx(txData.txHash, txData.gasPrice, txData.blockNumber);
-    }
-
-    // Get current mempool count (for testing)
-    function getCurrentMempoolCount() external view returns (uint256) {
-        return current_mempool - 1; // current_mempool starts at 1, so count is current-1
     }
     
     // ===== REWARDS SYSTEM =====
@@ -690,5 +630,285 @@ contract ProofOfIntelligence {
      */
     function getPendingRewards(string memory agentAddress) external view returns (uint256) {
         return pendingRewards[agentAddress];
+    }
+
+    // ==================== GETTER FUNCTIONS ====================
+
+    /**
+     * @dev Get all blocks
+     * @param startBlock Starting block number
+     * @param endBlock Ending block number (inclusive)
+     * @return Array of blocks
+     */
+    function getBlocks(uint256 startBlock, uint256 endBlock) external view returns (Block[] memory) {
+        require(endBlock >= startBlock, "Invalid range");
+        require(endBlock <= currentBlockNumber, "End block exceeds current");
+        
+        uint256 length = endBlock - startBlock + 1;
+        Block[] memory blocks = new Block[](length);
+        
+        for (uint256 i = 0; i < length; i++) {
+            blocks[i] = blockchain[startBlock + i];
+        }
+        
+        return blocks;
+    }
+
+    /**
+     * @dev Get a specific block
+     * @param blockNumber The block number
+     * @return The block data
+     */
+    function getBlock(uint256 blockNumber) external view returns (Block memory) {
+        return blockchain[blockNumber];
+    }
+
+    /**
+     * @dev Get latest N blocks
+     * @param count Number of recent blocks to fetch
+     * @return Array of blocks
+     */
+    function getLatestBlocks(uint256 count) external view returns (Block[] memory) {
+        require(count > 0, "Count must be positive");
+        
+        uint256 actualCount = count;
+        if (currentBlockNumber < count) {
+            actualCount = currentBlockNumber + 1;
+        }
+        
+        Block[] memory blocks = new Block[](actualCount);
+        uint256 startBlock = currentBlockNumber + 1 - actualCount;
+        
+        for (uint256 i = 0; i < actualCount; i++) {
+            blocks[i] = blockchain[startBlock + i];
+        }
+        
+        return blocks;
+    }
+
+    /**
+     * @dev Get all mempool transactions
+     * @param startId Starting mempool ID
+     * @param endId Ending mempool ID (inclusive)
+     * @return Array of mempool transactions
+     */
+    function getMempoolTransactions(uint256 startId, uint256 endId) external view returns (Mempool[] memory) {
+        require(endId >= startId, "Invalid range");
+        require(endId < current_mempool, "End ID exceeds current");
+        
+        uint256 length = endId - startId + 1;
+        Mempool[] memory txs = new Mempool[](length);
+        
+        for (uint256 i = 0; i < length; i++) {
+            txs[i] = mempoolTxs[startId + i];
+        }
+        
+        return txs;
+    }
+
+    /**
+     * @dev Get a specific mempool transaction
+     * @param mempoolId The mempool ID
+     * @return The mempool transaction data
+     */
+    function getMempoolTransaction(uint256 mempoolId) external view returns (Mempool memory) {
+        return mempoolTxs[mempoolId];
+    }
+
+    /**
+     * @dev Get current mempool count
+     * @return The current mempool ID
+     */
+    function getCurrentMempoolCount() external view returns (uint256) {
+        return current_mempool;
+    }
+
+    /**
+     * @dev Get all prediction rounds
+     * @param startRound Starting round ID
+     * @param endRound Ending round ID (inclusive)
+     * @return Array of prediction rounds
+     */
+    function getPredictionRounds(uint256 startRound, uint256 endRound) external view returns (PredictionRound[] memory) {
+        require(endRound >= startRound, "Invalid range");
+        require(endRound <= currentPredictionRound, "End round exceeds current");
+        
+        uint256 length = endRound - startRound + 1;
+        PredictionRound[] memory rounds = new PredictionRound[](length);
+        
+        for (uint256 i = 0; i < length; i++) {
+            rounds[i] = predictionRounds[startRound + i];
+        }
+        
+        return rounds;
+    }
+
+    /**
+     * @dev Get a specific prediction round
+     * @param roundId The round ID
+     * @return The prediction round data
+     */
+    function getPredictionRound(uint256 roundId) external view returns (PredictionRound memory) {
+        return predictionRounds[roundId];
+    }
+
+    /**
+     * @dev Get current prediction round details
+     * @return The current round data
+     */
+    function getCurrentRound() external view returns (PredictionRound memory) {
+        require(currentPredictionRound > 0, "No active round");
+        return predictionRounds[currentPredictionRound];
+    }
+
+    /**
+     * @dev Get all predictions for a specific round
+     * @param roundId The round ID
+     * @return Array of agent addresses and their predictions
+     */
+    function getRoundPredictions(uint256 roundId) external view returns (string[] memory, Prediction[] memory) {
+        PredictionRound storage round = predictionRounds[roundId];
+        uint256 count = round.participants.length;
+        
+        string[] memory agentAddresses = new string[](count);
+        Prediction[] memory predictions = new Prediction[](count);
+        
+        for (uint256 i = 0; i < count; i++) {
+            string memory agentAddr = round.participants[i];
+            agentAddresses[i] = agentAddr;
+            predictions[i] = roundPredictions[roundId][agentAddr];
+        }
+        
+        return (agentAddresses, predictions);
+    }
+
+    /**
+     * @dev Get prediction for a specific agent in a specific round
+     * @param roundId The round ID
+     * @param agentAddress The agent address
+     * @return The prediction data
+     */
+    function getPrediction(uint256 roundId, string memory agentAddress) external view returns (Prediction memory) {
+        return roundPredictions[roundId][agentAddress];
+    }
+
+    /**
+     * @dev Get all participants in a round
+     * @param roundId The round ID
+     * @return Array of participant agent addresses
+     */
+    function getRoundParticipants(uint256 roundId) external view returns (string[] memory) {
+        return predictionRounds[roundId].participants;
+    }
+
+    /**
+     * @dev Get agent prediction history
+     * @param agentAddress The agent address
+     * @return Array of prediction history entries
+     */
+    function getAgentHistory(string memory agentAddress) external view returns (PredictionHistory[] memory) {
+        return agentHistory[agentAddress];
+    }
+
+    /**
+     * @dev Get agent's last N predictions
+     * @param agentAddress The agent address
+     * @param count Number of recent predictions to fetch
+     * @return Array of prediction history entries
+     */
+    function getAgentRecentHistory(string memory agentAddress, uint256 count) external view returns (PredictionHistory[] memory) {
+        PredictionHistory[] storage history = agentHistory[agentAddress];
+        uint256 totalCount = history.length;
+        
+        if (totalCount == 0) {
+            return new PredictionHistory[](0);
+        }
+        
+        uint256 actualCount = count;
+        if (totalCount < count) {
+            actualCount = totalCount;
+        }
+        
+        PredictionHistory[] memory recentHistory = new PredictionHistory[](actualCount);
+        uint256 startIndex = totalCount - actualCount;
+        
+        for (uint256 i = 0; i < actualCount; i++) {
+            recentHistory[i] = history[startIndex + i];
+        }
+        
+        return recentHistory;
+    }
+
+    /**
+     * @dev Get agent's bias (average over/under prediction)
+     * @param agentAddress The agent address
+     * @return The bias value
+     */
+    function getAgentBias(string memory agentAddress) external view returns (int256) {
+        return agentBias[agentAddress];
+    }
+
+    /**
+     * @dev Get agent statistics
+     * @param agentAddress The agent address
+     * @return totalGuesses Total number of predictions
+     * @return bestGuesses Number of best (winning) predictions
+     * @return accuracy Accuracy percentage
+     * @return lastGuessBlock Last block where agent predicted
+     * @return pendingReward Pending POI token rewards
+     * @return bias Average prediction bias
+     */
+    function getAgentStats(string memory agentAddress) external view returns (
+        uint256 totalGuesses,
+        uint256 bestGuesses,
+        uint256 accuracy,
+        uint256 lastGuessBlock,
+        uint256 pendingReward,
+        int256 bias
+    ) {
+        Agent storage agent = agents[agentAddress];
+        return (
+            agent.totalGuesses,
+            agent.bestGuesses,
+            agent.accuracy,
+            agent.lastGuessBlock,
+            pendingRewards[agentAddress],
+            agentBias[agentAddress]
+        );
+    }
+
+    /**
+     * @dev Get top 10 agents leaderboard
+     * @return Array of top agent addresses
+     */
+    function getLeaderboard() external view returns (string[] memory) {
+        return top10Agents;
+    }
+
+    /**
+     * @dev Get contract state summary
+     * @return currentBlock Current block number
+     * @return currentRound Current prediction round
+     * @return mempoolCount Total mempool transactions
+     * @return roundActive Whether current round is active
+     * @return roundFinalized Whether current round is finalized
+     */
+    function getContractState() external view returns (
+        uint256 currentBlock,
+        uint256 currentRound,
+        uint256 mempoolCount,
+        bool roundActive,
+        bool roundFinalized
+    ) {
+        bool active = currentPredictionRound > 0;
+        bool finalized = active ? predictionRounds[currentPredictionRound].finalized : false;
+        
+        return (
+            currentBlockNumber,
+            currentPredictionRound,
+            current_mempool,
+            active,
+            finalized
+        );
     }
 }
