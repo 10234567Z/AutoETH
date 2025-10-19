@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import Nav from "../../components/nav";
 import Image from "next/image";
 
 const Onboarding = () => {
@@ -16,7 +15,6 @@ const Onboarding = () => {
 
   return (
     <main className="min-h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
-      <Nav />
       <div className="absolute inset-0 z-0 opacity-50">
         <div className="absolute w-96 h-96 bg-purple-900 rounded-full -top-20 -left-20 opacity-30 floating-shape" />
         <div className="absolute w-96 h-96 bg-blue-900 rounded-full -bottom-20 -right-20 opacity-30 floating-shape" style={{ animationDelay: '3s' }} />

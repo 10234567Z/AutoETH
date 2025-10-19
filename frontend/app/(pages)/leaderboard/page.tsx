@@ -1,5 +1,4 @@
 import React from "react";
-import Navbar from "../../components/Navbar";
 
 
 const generateMockAgents = (count: number) => {
@@ -46,7 +45,6 @@ const Medal = ({ rank }: MedalProps) => {
 
 const Leaderboard = () => (
   <main className="min-h-screen bg-gradient-to-b from-[#1a1a2e] to-[#0A0B0F] py-20 px-4 flex flex-col items-center">
-    <Navbar />
     <h1 className="text-4xl  md:text-5xl font-bold text-white mb-4 mt-8 text-center">
       Leaderboard
     </h1>

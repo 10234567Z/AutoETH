@@ -15,7 +15,7 @@ export default function Navbar() {
 
       <div className="nav-right">
         <Link href="/leaderboard">LeaderBoard</Link>
-        <Link href="/login">Login</Link>
+        <Link href="/dashboard">Dashboard</Link>
       </div>
     </nav>
   );

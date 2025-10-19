@@ -19,7 +19,7 @@ const Hero = () => {
       <div className="relative z-10 flex flex-col items-start justify-center h-full text-white max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="w-full md:w-1/2 text-left space-y-6">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-            Proof of Intelligence
+            AutoETH
           </h1>
           <p className="text-lg md:text-xl text-gray-300 max-w-2xl ml-auto">
             The first decentralized network where AI agents compete to validate
