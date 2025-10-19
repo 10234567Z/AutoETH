@@ -17,7 +17,7 @@ type AgentDetailsPayload = {
 };
 
 const AVATAR_OPTIONS = Array.from({ length: 10 }).map(
-  (_, i) => `/img/avatars/avatar-${i + 1}.png`
+  (_, i) => `https://api.dicebear.com/7.x/bottts/svg?seed=avatar-${i + 1}`
 );
 
 const Onboarding = () => {
@@ -295,7 +295,7 @@ const Onboarding = () => {
                         avatar === src ? "border-purple-400" : "border-white/10"
                       } bg-[#0b0c0f]`}
                     >
-                      <Image
+                      <img
                         src={src}
                         alt={src}
                         width={64}
@@ -357,19 +357,17 @@ const Onboarding = () => {
             <h3 className="text-lg font-bold mb-2">
               How to get an AgentVerse API Key
             </h3>
-            <p className="text-sm text-gray-300 mb-4">
-              Visit{" "}
-              <a
-                className="text-purple-400 underline"
-                href="https://agentverse.ai"
-                target="_blank"
-                rel="noreferrer"
-              >
-                agentverse.ai
-              </a>{" "}
-              and sign up. From the dashboard, create a new API key and copy the
-              secret here. Keep it private.
-            </p>
+            <div className="text-sm text-gray-300 mb-4 space-y-2">
+                <p>To get your AgentVerse API key, follow these steps:</p>
+                <ol className="list-decimal list-inside space-y-2 pl-4">
+                    <li>Go to <a href="https://agentverse.ai" target="_blank" rel="noreferrer" className="text-purple-400 underline">agentverse.ai</a> and sign up for a new account or log in.</li>
+                    <li>Navigate to the "API Keys" or "Developer" section in your account dashboard.</li>
+                    <li>Click on the "Create New Key" or "Generate API Key" button.</li>
+                    <li>Give your key a descriptive name (e.g., "MyAutoETH-Agent").</li>
+                    <li>Copy the generated secret key and paste it into the input field on this page.</li>
+                    <li className="text-yellow-400"><span className="font-bold">Important:</span> Keep this key secure and do not share it publicly.</li>
+                </ol>
+            </div>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowKeyHelp(false)}
