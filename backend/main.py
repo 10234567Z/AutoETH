@@ -21,8 +21,8 @@ ASI_ONE_API_KEY  = os.getenv("ASIONE_API_KEY")
 
 # Smart Contract Configuration
 RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
-CONTRACT_ADDRESS = "0x2b2d4989ed6f94a406dc23bc65254bae2e983447"
-POI_TOKEN_ADDRESS = "0x4e73f35b0826e74bb69e404d0c2e2c6be18f0f2d"
+CONTRACT_ADDRESS = "0xbae9fee9aaffce42b5156c80d5802ba3e0ecb6b7"
+POI_TOKEN_ADDRESS = "0x4e469fa4f69cff67bf0f0f194a2ad41aa71a0eb5"
 SEPOLIA_PRIVATE_KEY = os.getenv("SEPOLIA_PRIVATE_KEY", "0x5c86c08228cbd7f2e7890e8bfe1288ff7f90f64404fa9801f5f80320e44a0e6c")
 
 # Initialize Web3
@@ -61,12 +61,14 @@ class AgentDetails(BaseModel):
     network: Optional[str] = "testnet"
     agentverse_api_key: str
     agent_seed: Optional[str] = None  # Unique seed for agent randomness
+    wallet_address: str  # User's Ethereum wallet for rewards
+    deviation: int = 50  # Deviation value (10-99), affects price adjustment
 
 @app.get("/")
 async def root():
     return {"message": "Proof of Intelligence", "token": AGENTVERSE_API_KEY}
 
-def get_eth_prediction_agent_code(agent_name: str, seed: str) -> str:
+def get_eth_prediction_agent_code(agent_name: str, seed: str, deviation: int) -> str:
     """Generate ETH price prediction agent code"""
     return f"""from datetime import datetime, timezone
 from uuid import uuid4
@@ -93,8 +95,8 @@ client = OpenAI(
 
 # Smart Contract Configuration (for agent template)
 SEPOLIA_RPC_TEMPLATE = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
-CONTRACT_ADDRESS_TEMPLATE = "0xa75ea9159f1c4f0eadbe024b9204294e48f89392"
-POI_TOKEN_ADDRESS_TEMPLATE = "0x0da45357e1e822094de6f2a2103bc88b72e4ae97"
+CONTRACT_ADDRESS_TEMPLATE = "0xbae9fee9aaffce42b5156c80d5802ba3e0ecb6b7"
+POI_TOKEN_ADDRESS_TEMPLATE = "0x4e469fa4f69cff67bf0f0f194a2ad41aa71a0eb5"
 PRIVATE_KEY = {repr(SEPOLIA_PRIVATE_KEY)}
 
 # Initialize Web3 (for template)
@@ -103,7 +105,9 @@ contract_abi = [
     {{"inputs": [{{"internalType": "string", "name": "agentAddress", "type": "string"}}, {{"internalType": "int256", "name": "predictedPrice", "type": "int256"}}], "name": "submitPrediction", "outputs": [], "stateMutability": "nonpayable", "type": "function"}},
     {{"inputs": [], "name": "currentPredictionRound", "outputs": [{{"internalType": "uint256", "name": "", "type": "uint256"}}], "stateMutability": "view", "type": "function"}},
     {{"inputs": [{{"internalType": "uint256", "name": "", "type": "uint256"}}], "name": "predictionRounds", "outputs": [{{"internalType": "uint256", "name": "forBlockNumber", "type": "uint256"}}, {{"internalType": "uint256", "name": "startTime", "type": "uint256"}}, {{"internalType": "uint256", "name": "submissionDeadline", "type": "uint256"}}, {{"internalType": "uint256", "name": "predictionCount", "type": "uint256"}}, {{"internalType": "bool", "name": "finalized", "type": "bool"}}, {{"internalType": "string", "name": "winnerAgent", "type": "string"}}, {{"internalType": "int256", "name": "actualPrice", "type": "int256"}}], "stateMutability": "view", "type": "function"}},
-    {{"inputs": [{{"internalType": "uint256", "name": "", "type": "uint256"}}, {{"internalType": "uint256", "name": "", "type": "uint256"}}], "name": "participants", "outputs": [{{"internalType": "string", "name": "", "type": "string"}}], "stateMutability": "view", "type": "function"}}
+    {{"inputs": [{{"internalType": "uint256", "name": "", "type": "uint256"}}, {{"internalType": "uint256", "name": "", "type": "uint256"}}], "name": "participants", "outputs": [{{"internalType": "string", "name": "", "type": "string"}}], "stateMutability": "view", "type": "function"}},
+    {{"inputs": [{{"internalType": "string", "name": "agentAddress", "type": "string"}}, {{"internalType": "uint256", "name": "count", "type": "uint256"}}], "name": "getAgentRecentHistory", "outputs": [{{"components": [{{"internalType": "uint256", "name": "roundId", "type": "uint256"}}, {{"internalType": "int256", "name": "predicted", "type": "int256"}}, {{"internalType": "int256", "name": "actual", "type": "int256"}}, {{"internalType": "int256", "name": "difference", "type": "int256"}}, {{"internalType": "uint256", "name": "timestamp", "type": "uint256"}}], "internalType": "struct ProofOfIntelligence.PredictionHistory[]", "name": "", "type": "tuple[]"}}], "stateMutability": "view", "type": "function"}},
+    {{"inputs": [{{"internalType": "string", "name": "agentAddress", "type": "string"}}], "name": "getAgentBias", "outputs": [{{"internalType": "int256", "name": "", "type": "int256"}}], "stateMutability": "view", "type": "function"}}
 ]
 contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), abi=contract_abi)
 
@@ -112,6 +116,58 @@ protocol = Protocol(spec=chat_protocol_spec)
 
 # Store agent's actual Agentverse address (not the name)
 AGENT_ADDRESS = agent.address
+
+# Deviation parameter (10-99) - adjusts AI prediction before submission
+DEVIATION = {deviation}  # Convert to percentage: deviation/100 = 0.{deviation:02d}
+
+
+def fetch_agent_history():
+    \"\"\"Fetch agent's recent prediction history from blockchain\"\"\"
+    try:
+        # Get last 10 predictions
+        history = contract.functions.getAgentRecentHistory(AGENT_ADDRESS, 10).call()
+        return history if history else []
+    except Exception as e:
+        print(f"Error fetching history: {{e}}")
+        return []
+
+
+def analyze_history(history):
+    \"\"\"Analyze historical predictions to extract patterns\"\"\"
+    if not history or len(history) == 0:
+        return {{
+            "has_history": False,
+            "avg_bias": 0,
+            "accuracy": 0,
+            "total_predictions": 0,
+            "recent_predictions": []
+        }}
+    
+    # Calculate average bias (positive = predict too high, negative = predict too low)
+    total_bias = sum(h[3] for h in history)  # h[3] is difference (predicted - actual)
+    avg_bias = total_bias / len(history) if len(history) > 0 else 0
+    
+    # Calculate accuracy (how close predictions are on average)
+    total_error = sum(abs(h[3]) for h in history)
+    avg_error = total_error / len(history) if len(history) > 0 else 0
+    
+    # Format recent predictions for context
+    recent = []
+    for h in history[-5:]:  # Last 5 predictions
+        recent.append({{
+            "round": h[0],
+            "predicted": h[1] / 100,  # Convert back from int
+            "actual": h[2] / 100,
+            "diff": h[3] / 100
+        }})
+    
+    return {{
+        "has_history": True,
+        "avg_bias": avg_bias / 100,  # Convert to dollars
+        "avg_error": avg_error / 100,
+        "total_predictions": len(history),
+        "recent_predictions": recent
+    }}
 
 
 def fetch_pyth_hermes():
@@ -148,10 +204,34 @@ def fetch_pyth_hermes():
 def get_ai_prediction(eth_price_data):
     \"\"\"Get AI prediction for ETH price in next 60 seconds\"\"\"
     try:
+        # Fetch and analyze historical performance
+        history = fetch_agent_history()
+        analysis = analyze_history(history)
+        
+        # Build enhanced system prompt with self-learning context
+        system_prompt = f"You are an ETH price prediction AI. Current ETH price: ${{{{eth_price_data['price']}}}} USD (EMA: ${{{{eth_price_data['ema_price']}}}} USD).\\n\\n"
+        
+        if analysis['has_history']:
+            # Add historical context for self-learning
+            bias_direction = "too HIGH" if analysis['avg_bias'] > 0 else "too LOW"
+            system_prompt += f"YOUR HISTORICAL PERFORMANCE:\\n"
+            system_prompt += f"- Total predictions made: {{{{analysis['total_predictions']}}}}\\n"
+            system_prompt += f"- Average bias: ${{{{analysis['avg_bias']:.2f}}}} (you tend to predict {{{{bias_direction}}}})\\n"
+            system_prompt += f"- Average error: ${{{{analysis['avg_error']:.2f}}}}\\n"
+            system_prompt += f"- Recent predictions (last 5):\\n"
+            for p in analysis['recent_predictions']:
+                system_prompt += f"  Round {{{{p['round']}}}}: Predicted ${{{{p['predicted']:.2f}}}}, Actual ${{{{p['actual']:.2f}}}}, Diff ${{{{p['diff']:.2f}}}}\\n"
+            
+            system_prompt += "\\nLEARN FROM YOUR MISTAKES: Adjust your next prediction to compensate for your bias and improve accuracy.\\n\\n"
+        else:
+            system_prompt += "This is your first prediction. No historical data yet.\\n\\n"
+        
+        system_prompt += "Predict the ETH price in 60 seconds. Output ONLY the predicted price as a number, nothing else."
+        
         r = client.chat.completions.create(
             model="asi1-fast",
             messages=[
-                {{"role": "system", "content": f"You are a helpful assistant who only answers questions about {{subject_matter}}. If the user asks about any other topics, you should politely say that you do not know about them. You have access to the latest ETH/USD price data from the Pyth Network Hermes API. The latest price is {{eth_price_data['price']}} USD, with an EMA price of {{eth_price_data['ema_price']}} USD, published at UNIX timestamp {{eth_price_data['publish_time']}}. Use this data to inform your responses. Even if the user asks for any kind of prediction, give them only what you THINK will be the price based on current data in next 60 seconds. It does not have to be accurate and advice whatever, just give a number based on current data and give the predictions.Also just give the predicted price in response, thats it nothing else should be in response other than the predicted price in next 60s."}},
+                {{"role": "system", "content": system_prompt}},
                 {{"role": "user", "content": "What will ETH price be in 60 seconds?"}},
             ],
             max_tokens=2048,
@@ -207,7 +287,7 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
             'nonce': nonce,
             'gas': 500000,
             'gasPrice': w3.eth.gas_price,
-            'chainId': 296
+            'chainId': 11155111  # Sepolia
         }})
         
         ctx.logger.info("📦 Signing transaction...")
@@ -278,10 +358,15 @@ async def check_and_submit_prediction(ctx: Context):
         
         # Get AI prediction
         predicted_price = get_ai_prediction(eth_price_data)
-        ctx.logger.info(f"🎯 AI Prediction: ${{{{predicted_price}}}}")
+        ctx.logger.info(f"🎯 AI Prediction (raw): ${{{{predicted_price}}}}")
+        
+        # Apply deviation adjustment
+        deviation_multiplier = 1 - (DEVIATION / 100)
+        adjusted_price = predicted_price * deviation_multiplier
+        ctx.logger.info(f"📉 Deviation: {{{{DEVIATION}}}}% -> Adjusted: ${{{{adjusted_price:.2f}}}}")
         
         # Submit to blockchain
-        tx_hash = submit_prediction_onchain(ctx, AGENT_ADDRESS, predicted_price)
+        tx_hash = submit_prediction_onchain(ctx, AGENT_ADDRESS, adjusted_price)
         if tx_hash:
             ctx.logger.info(f"✅ Prediction submitted! TX: {{{{tx_hash}}}}")
         else:
@@ -346,71 +431,12 @@ agent.include(protocol, publish_manifest=True)
 
 async def register_onchain(agent_address: str, agent_wallet: str):
     """Register the agent on-chain using smart contract"""
-    try:
-        if not SEPOLIA_PRIVATE_KEY:
-            print(f"⚠️  No private key configured, skipping on-chain registration for {agent_address}")
-            return {
-                "status": "skipped",
-                "message": "No private key configured"
-            }
-        
-        # Create contract instance
-        contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
-        
-        # Get account from private key
-        account = w3.eth.account.from_key(SEPOLIA_PRIVATE_KEY)
-        
-        # Prepare agent struct for on-chain registration
-        agent_struct = (
-            agent_address,      # agentAddress (Agentverse address)
-            agent_wallet,       # agentWalletAddress
-            0,                  # totalGuesses
-            0,                  # bestGuesses
-            0,                  # accuracy
-            0                   # lastGuessBlock
-        )
-        
-        # Build transaction
-        transaction = contract.functions.registerAgent(agent_struct).build_transaction({
-            'from': account.address,
-            'nonce': w3.eth.get_transaction_count(account.address),
-            'gas': 2000000,
-            'gasPrice': w3.eth.gas_price,
-            'chainId': 296  # Hedera Testnet
-        })
-        
-        # Sign transaction
-        signed_txn = account.sign_transaction(transaction)
-        
-        # Send transaction
-        tx_hash = w3.eth.send_raw_transaction(signed_txn.raw_transaction)
-        
-        print(f"✅ On-chain registration transaction sent: {tx_hash.hex()}")
-        
-        # Wait for receipt (with timeout)
-        tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=30)
-        
-        if tx_receipt['status'] == 1:
-            print(f"✅ Agent {agent_address} registered on-chain successfully!")
-            return {
-                "status": "success",
-                "tx_hash": tx_hash.hex(),
-                "block_number": tx_receipt['blockNumber'],
-                "explorer_url": f"https://hashscan.io/testnet/transaction/{tx_hash.hex()}"
-            }
-        else:
-            return {
-                "status": "failed",
-                "message": "Transaction reverted",
-                "tx_hash": tx_hash.hex()
-            }
-            
-    except Exception as e:
-        print(f"❌ Error registering agent on-chain: {e}")
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+    # REMOVED: Frontend handles registration with user's wallet
+    print(f"⚠️  On-chain registration skipped - frontend will handle with user wallet")
+    return {
+        "status": "skipped",
+        "message": "Frontend handles registration with user wallet"
+    }
         
 
 @app.post("/agent")
@@ -464,7 +490,11 @@ async def create_agent(agent_details: AgentDetails):
         
         # Step 3: Upload code to the agent
         import json
-        agent_code = get_eth_prediction_agent_code(agent_details.name, agent_details.agent_seed or "default_seed")
+        agent_code = get_eth_prediction_agent_code(
+            agent_details.name, 
+            agent_details.agent_seed or "default_seed",
+            agent_details.deviation
+        )
         code_payload = json.dumps([{
             "id": 0,
             "name": "agent.py",
