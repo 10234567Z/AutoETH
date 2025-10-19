@@ -30,6 +30,7 @@ SEPOLIA_PRIVATE_KEY = os.getenv("SEPOLIA_PRIVATE_KEY", "0x5c86c08228cbd7f2e7890e
 # Gas tracking configuration
 GAS_TRACKING_FILE = Path("gas_tracking.json")
 INITIAL_STAKE_AMOUNT = 0.1  # ETH
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:3002")  # Set to ngrok URL in production
 
 # Initialize Web3
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
@@ -197,6 +198,9 @@ protocol = Protocol(spec=chat_protocol_spec)
 
 # Store agent's actual Agentverse address (not the name)
 AGENT_ADDRESS = agent.address
+
+# Backend URL for gas tracking (set via BACKEND_URL env var)
+BACKEND_URL = "{BACKEND_URL}"
 
 # Deviation parameter (10-99) - adjusts AI prediction before submission
 DEVIATION = {deviation}  # Convert to percentage: deviation/100 = 0.{deviation:02d}
@@ -394,7 +398,7 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
                 
                 # Send gas usage to backend API
                 response = httpx.post(
-                    "http://localhost:3002/internal/record-gas",
+                    f"{{{{BACKEND_URL}}}}/internal/record-gas",
                     json={{
                         "agent_address": agent_addr,
                         "tx_hash": tx_hash.hex(),
@@ -481,7 +485,7 @@ async def check_and_submit_prediction(ctx: Context):
         
         # Check gas balance before submitting
         try:
-            response = httpx.get(f"http://localhost:3002/agent/{{{{AGENT_ADDRESS}}}}/gas-stats", timeout=5.0)
+            response = httpx.get(f"{{{{BACKEND_URL}}}}/agent/{{{{AGENT_ADDRESS}}}}/gas-stats", timeout=5.0)
             if response.status_code == 200:
                 stats = response.json()
                 remaining = stats['stats']['remaining']
