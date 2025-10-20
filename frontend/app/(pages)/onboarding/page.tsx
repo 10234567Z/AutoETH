@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { ethers } from "ethers";
 
 type AgentDetailsPayload = {
   name: string;
@@ -115,7 +116,106 @@ const Onboarding = () => {
 
       if (!res.ok) {
         const txt = await res.text();
-        throw new Error(txt || "Failed to register agent");
+        throw new Error(txt || "Failed to register agent (backend)");
+      }
+
+      // try on-chain registration using user's wallet (ethers.js)
+      try {
+        // Minimal ABI for registerAgent expecting the Agent tuple
+        const CONTRACT_ADDRESS = "0x6b4376c102bdd8254dfcd01e6347a9e30d52400a"; // ProofOfIntelligence contract address (match backend)
+        const CONTRACT_ABI = [
+          {
+            inputs: [
+              {
+                components: [
+                  {
+                    internalType: "string",
+                    name: "agentAddress",
+                    type: "string",
+                  },
+                  {
+                    internalType: "string",
+                    name: "agentWalletAddress",
+                    type: "string",
+                  },
+                  {
+                    internalType: "uint256",
+                    name: "totalGuesses",
+                    type: "uint256",
+                  },
+                  {
+                    internalType: "uint256",
+                    name: "bestGuesses",
+                    type: "uint256",
+                  },
+                  {
+                    internalType: "uint256",
+                    name: "accuracy",
+                    type: "uint256",
+                  },
+                  {
+                    internalType: "uint256",
+                    name: "lastGuessBlock",
+                    type: "uint256",
+                  },
+                ],
+                internalType: "struct ProofOfIntelligence.Agent",
+                name: "agent",
+                type: "tuple",
+              },
+            ],
+            name: "registerAgent",
+            outputs: [],
+            stateMutability: "nonpayable",
+            type: "function",
+          },
+        ];
+
+        const anyWindow: any = window;
+        if (!anyWindow.ethereum) {
+          throw new Error("No wallet found for on-chain registration");
+        }
+
+        const provider = new (ethers as any).providers.Web3Provider(
+          anyWindow.ethereum
+        );
+        const signer = provider.getSigner();
+        const signerAddress = await signer.getAddress();
+        if (signerAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+          // Ask user to switch/account mismatch
+          setError(
+            "Please ensure the connected wallet matches the address you used to register."
+          );
+        }
+
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          CONTRACT_ABI,
+          signer
+        );
+
+        // Build agent tuple: use name as agentAddress (string) and walletAddress as agentWalletAddress
+        const agentTuple = [
+          name || walletAddress,
+          walletAddress,
+          0, // totalGuesses
+          0, // bestGuesses
+          0, // accuracy
+          0, // lastGuessBlock
+        ];
+
+        const tx = await contract.registerAgent(agentTuple);
+        console.info("Submitted on-chain tx:", tx.hash);
+        // wait for confirmation
+        await tx.wait();
+      } catch (chainErr: any) {
+        console.error("On-chain registration error:", chainErr);
+        // Do not block user if on-chain fails; surface message
+        setError(
+          (prev) =>
+            (prev ? prev + " | " : "") +
+            (chainErr?.message || "On-chain registration failed")
+        );
       }
 
       // success -> navigate to dashboard
@@ -358,15 +458,39 @@ const Onboarding = () => {
               How to get an AgentVerse API Key
             </h3>
             <div className="text-sm text-gray-300 mb-4 space-y-2">
-                <p>To get your AgentVerse API key, follow these steps:</p>
-                <ol className="list-decimal list-inside space-y-2 pl-4">
-                    <li>Go to <a href="https://agentverse.ai" target="_blank" rel="noreferrer" className="text-purple-400 underline">agentverse.ai</a> and sign up for a new account or log in.</li>
-                    <li>Navigate to the "API Keys" or "Developer" section in your account dashboard.</li>
-                    <li>Click on the "Create New Key" or "Generate API Key" button.</li>
-                    <li>Give your key a descriptive name (e.g., "MyAutoETH-Agent").</li>
-                    <li>Copy the generated secret key and paste it into the input field on this page.</li>
-                    <li className="text-yellow-400"><span className="font-bold">Important:</span> Keep this key secure and do not share it publicly.</li>
-                </ol>
+              <p>To get your AgentVerse API key, follow these steps:</p>
+              <ol className="list-decimal list-inside space-y-2 pl-4">
+                <li>
+                  Go to{" "}
+                  <a
+                    href="https://agentverse.ai"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-purple-400 underline"
+                  >
+                    agentverse.ai
+                  </a>{" "}
+                  and sign up for a new account or log in.
+                </li>
+                <li>
+                  Navigate to the "API Keys" or "Developer" section in your
+                  account dashboard.
+                </li>
+                <li>
+                  Click on the "Create New Key" or "Generate API Key" button.
+                </li>
+                <li>
+                  Give your key a descriptive name (e.g., "MyAutoETH-Agent").
+                </li>
+                <li>
+                  Copy the generated secret key and paste it into the input
+                  field on this page.
+                </li>
+                <li className="text-yellow-400">
+                  <span className="font-bold">Important:</span> Keep this key
+                  secure and do not share it publicly.
+                </li>
+              </ol>
             </div>
             <div className="flex justify-end gap-2">
               <button
