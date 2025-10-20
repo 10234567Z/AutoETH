@@ -23,8 +23,8 @@ ASI_ONE_API_KEY  = os.getenv("ASIONE_API_KEY")
 
 # Smart Contract Configuration
 RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
-CONTRACT_ADDRESS = "0xbae9fee9aaffce42b5156c80d5802ba3e0ecb6b7"
-POI_TOKEN_ADDRESS = "0x4e469fa4f69cff67bf0f0f194a2ad41aa71a0eb5"
+CONTRACT_ADDRESS = "0x6b4376c102bdd8254dfcd01e6347a9e30d52400a"
+POI_TOKEN_ADDRESS = "0xc19d6bc4b4dc148e404e1ecd14f1ed7f9dcaf35b"
 SEPOLIA_PRIVATE_KEY = os.getenv("SEPOLIA_PRIVATE_KEY", "0x5c86c08228cbd7f2e7890e8bfe1288ff7f90f64404fa9801f5f80320e44a0e6c")
 
 # Gas tracking configuration
@@ -177,12 +177,12 @@ client = OpenAI(
 
 # Smart Contract Configuration (for agent template)
 SEPOLIA_RPC_TEMPLATE = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
-CONTRACT_ADDRESS_TEMPLATE = "0xbae9fee9aaffce42b5156c80d5802ba3e0ecb6b7"
-POI_TOKEN_ADDRESS_TEMPLATE = "0x4e469fa4f69cff67bf0f0f194a2ad41aa71a0eb5"
+CONTRACT_ADDRESS_TEMPLATE = "0x6b4376c102bdd8254dfcd01e6347a9e30d52400a"
+POI_TOKEN_ADDRESS_TEMPLATE = "0xc19d6bc4b4dc148e404e1ecd14f1ed7f9dcaf35b"
 PRIVATE_KEY = {repr(SEPOLIA_PRIVATE_KEY)}
 
-# Initialize Web3 (for template)
-w3_template = Web3(Web3.HTTPProvider(SEPOLIA_RPC_TEMPLATE))
+# Initialize Web3
+w3 = Web3(Web3.HTTPProvider(SEPOLIA_RPC_TEMPLATE))
 contract_abi = [
     {{"inputs": [{{"internalType": "string", "name": "agentAddress", "type": "string"}}, {{"internalType": "int256", "name": "predictedPrice", "type": "int256"}}], "name": "submitPrediction", "outputs": [], "stateMutability": "nonpayable", "type": "function"}},
     {{"inputs": [], "name": "currentPredictionRound", "outputs": [{{"internalType": "uint256", "name": "", "type": "uint256"}}], "stateMutability": "view", "type": "function"}},
@@ -191,7 +191,7 @@ contract_abi = [
     {{"inputs": [{{"internalType": "string", "name": "agentAddress", "type": "string"}}, {{"internalType": "uint256", "name": "count", "type": "uint256"}}], "name": "getAgentRecentHistory", "outputs": [{{"components": [{{"internalType": "uint256", "name": "roundId", "type": "uint256"}}, {{"internalType": "int256", "name": "predicted", "type": "int256"}}, {{"internalType": "int256", "name": "actual", "type": "int256"}}, {{"internalType": "int256", "name": "difference", "type": "int256"}}, {{"internalType": "uint256", "name": "timestamp", "type": "uint256"}}], "internalType": "struct ProofOfIntelligence.PredictionHistory[]", "name": "", "type": "tuple[]"}}], "stateMutability": "view", "type": "function"}},
     {{"inputs": [{{"internalType": "string", "name": "agentAddress", "type": "string"}}], "name": "getAgentBias", "outputs": [{{"internalType": "int256", "name": "", "type": "int256"}}], "stateMutability": "view", "type": "function"}}
 ]
-contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), abi=contract_abi)
+contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS_TEMPLATE), abi=contract_abi)
 
 agent = Agent(name={repr(agent_name)}, seed={repr(seed)})
 protocol = Protocol(spec=chat_protocol_spec)
@@ -204,6 +204,17 @@ BACKEND_URL = "{BACKEND_URL}"
 
 # Deviation parameter (10-99) - adjusts AI prediction before submission
 DEVIATION = {deviation}  # Convert to percentage: deviation/100 = 0.{deviation:02d}
+
+# Log agent info on startup
+print("=" * 80)
+print("🤖 AGENT INITIALIZATION")
+print("=" * 80)
+print(f"Agent Name: {repr(agent_name)}")
+print(f"Agent Seed: {repr(seed)}")
+print(f"Agent Address (Agentverse): {{agent.address}}")
+print(f"AGENT_ADDRESS variable: {{AGENT_ADDRESS}}")
+print(f"Deviation: {{DEVIATION}}%")
+print("=" * 80)
 
 
 def fetch_agent_history():
@@ -294,18 +305,18 @@ def get_ai_prediction(eth_price_data):
         analysis = analyze_history(history)
         
         # Build enhanced system prompt with self-learning context
-        system_prompt = f"You are an ETH price prediction AI. Current ETH price: ${{{{eth_price_data['price']}}}} USD (EMA: ${{{{eth_price_data['ema_price']}}}} USD).\\n\\n"
+        system_prompt = f"You are an ETH price prediction AI. Current ETH price: ${{eth_price_data['price']}} USD (EMA: ${{eth_price_data['ema_price']}} USD).\\n\\n"
         
         if analysis['has_history']:
             # Add historical context for self-learning
             bias_direction = "too HIGH" if analysis['avg_bias'] > 0 else "too LOW"
             system_prompt += f"YOUR HISTORICAL PERFORMANCE:\\n"
-            system_prompt += f"- Total predictions made: {{{{analysis['total_predictions']}}}}\\n"
-            system_prompt += f"- Average bias: ${{{{analysis['avg_bias']:.2f}}}} (you tend to predict {{{{bias_direction}}}})\\n"
-            system_prompt += f"- Average error: ${{{{analysis['avg_error']:.2f}}}}\\n"
+            system_prompt += f"- Total predictions made: {{analysis['total_predictions']}}\\n"
+            system_prompt += f"- Average bias: ${{analysis['avg_bias']:.2f}} (you tend to predict {{bias_direction}})\\n"
+            system_prompt += f"- Average error: ${{analysis['avg_error']:.2f}}\\n"
             system_prompt += f"- Recent predictions (last 5):\\n"
             for p in analysis['recent_predictions']:
-                system_prompt += f"  Round {{{{p['round']}}}}: Predicted ${{{{p['predicted']:.2f}}}}, Actual ${{{{p['actual']:.2f}}}}, Diff ${{{{p['diff']:.2f}}}}\\n"
+                system_prompt += f"  Round {{p['round']}}: Predicted ${{p['predicted']:.2f}}, Actual ${{p['actual']:.2f}}, Diff ${{p['diff']:.2f}}\\n"
             
             system_prompt += "\\nLEARN FROM YOUR MISTAKES: Adjust your next prediction to compensate for your bias and improve accuracy.\\n\\n"
         else:
@@ -350,10 +361,13 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
             ctx.logger.error("⚠️ No private key configured")
             return None
         
-        ctx.logger.info(f"🔗 Connecting to {{HEDERA_RPC}}")
-        ctx.logger.info(f"📝 Contract: {{CONTRACT_ADDRESS}}")
+        ctx.logger.info(f"🔗 Connecting to {{SEPOLIA_RPC_TEMPLATE}}")
+        ctx.logger.info(f"📝 Contract: {{CONTRACT_ADDRESS_TEMPLATE}}")
         ctx.logger.info(f"🤖 Agent: {{agent_addr}}")
         ctx.logger.info(f"💰 Price: ${{predicted_price}}")
+        
+        # Use the global w3 and contract instances
+        global w3, contract
             
         account = w3.eth.account.from_key(PRIVATE_KEY)
         ctx.logger.info(f"👛 Account: {{account.address}}")
@@ -362,8 +376,8 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
         price_int = int(float(predicted_price) * 100)
         ctx.logger.info(f"🔢 Price as int: {{price_int}}")
         
-        # Get current nonce and gas price
-        nonce = w3.eth.get_transaction_count(account.address)
+        # Get current nonce and gas price (use 'pending' to include pending transactions)
+        nonce = w3.eth.get_transaction_count(account.address, 'pending')
         gas_price = w3.eth.gas_price
         ctx.logger.info(f"🔢 Nonce: {{nonce}}")
         ctx.logger.info(f"⛽ Gas price: {{gas_price}} wei")
@@ -398,7 +412,7 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
                 
                 # Send gas usage to backend API
                 response = httpx.post(
-                    f"{{{{BACKEND_URL}}}}/internal/record-gas",
+                    f"{{BACKEND_URL}}/internal/record-gas",
                     json={{
                         "agent_address": agent_addr,
                         "tx_hash": tx_hash.hex(),
@@ -465,6 +479,13 @@ async def check_and_submit_prediction(ctx: Context):
         
         # All good - submit prediction!
         ctx.logger.info(f"🎯 Round #{{round_id}} active - submitting prediction...")
+        ctx.logger.info("=" * 60)
+        ctx.logger.info("🔍 AGENT ADDRESS DEBUG INFO")
+        ctx.logger.info(f"  Agent Name: {repr(agent_name)}")
+        ctx.logger.info(f"  Agent Address (runtime): {{agent.address}}")
+        ctx.logger.info(f"  AGENT_ADDRESS variable: {{AGENT_ADDRESS}}")
+        ctx.logger.info(f"  Will submit using: {{AGENT_ADDRESS}}")
+        ctx.logger.info("=" * 60)
         
         # Get current ETH price
         eth_price_data = fetch_pyth_hermes()
@@ -472,20 +493,20 @@ async def check_and_submit_prediction(ctx: Context):
             ctx.logger.error("Failed to fetch ETH price")
             return
         
-        ctx.logger.info(f"📊 Current ETH price: ${{{{eth_price_data['price']}}}}")
+        ctx.logger.info(f"📊 Current ETH price: ${{eth_price_data['price']}}")
         
         # Get AI prediction
         predicted_price = get_ai_prediction(eth_price_data)
-        ctx.logger.info(f"🎯 AI Prediction (raw): ${{{{predicted_price}}}}")
+        ctx.logger.info(f"🎯 AI Prediction (raw): ${{predicted_price}}")
         
         # Apply deviation adjustment
         deviation_multiplier = 1 - (DEVIATION / 100)
         adjusted_price = predicted_price * deviation_multiplier
-        ctx.logger.info(f"📉 Deviation: {{{{DEVIATION}}}}% -> Adjusted: ${{{{adjusted_price:.2f}}}}")
+        ctx.logger.info(f"📉 Deviation: {{DEVIATION}}% -> Adjusted: ${{adjusted_price:.2f}}")
         
         # Check gas balance before submitting
         try:
-            response = httpx.get(f"{{{{BACKEND_URL}}}}/agent/{{{{AGENT_ADDRESS}}}}/gas-stats", timeout=5.0)
+            response = httpx.get(f"{{BACKEND_URL}}/agent/{{AGENT_ADDRESS}}/gas-stats", timeout=5.0)
             if response.status_code == 200:
                 stats = response.json()
                 remaining = stats['stats']['remaining']
@@ -494,28 +515,28 @@ async def check_and_submit_prediction(ctx: Context):
                 gas_price = w3.eth.gas_price
                 estimated_cost = (500000 * gas_price) / 1e18
                 
-                ctx.logger.info(f"💰 Remaining balance: {{{{remaining:.6f}}}} ETH")
-                ctx.logger.info(f"⛽ Estimated cost: {{{{estimated_cost:.6f}}}} ETH")
+                ctx.logger.info(f"💰 Remaining balance: {{remaining:.6f}} ETH")
+                ctx.logger.info(f"⛽ Estimated cost: {{estimated_cost:.6f}} ETH")
                 
                 if remaining < estimated_cost:
-                    ctx.logger.error(f"❌ Insufficient gas balance! Need {{{{estimated_cost:.6f}}}} ETH, have {{{{remaining:.6f}}}} ETH")
+                    ctx.logger.error(f"❌ Insufficient gas balance! Need {{estimated_cost:.6f}} ETH, have {{remaining:.6f}} ETH")
                     return
                 else:
                     ctx.logger.info("✅ Sufficient gas balance")
             else:
                 ctx.logger.warning("⚠️ Could not check gas balance, proceeding anyway")
         except Exception as e:
-            ctx.logger.warning(f"⚠️ Gas balance check failed: {{{{e}}}}, proceeding anyway")
+            ctx.logger.warning(f"⚠️ Gas balance check failed: {{e}}, proceeding anyway")
         
         # Submit to blockchain
         tx_hash = submit_prediction_onchain(ctx, AGENT_ADDRESS, adjusted_price)
         if tx_hash:
-            ctx.logger.info(f"✅ Prediction submitted! TX: {{{{tx_hash}}}}")
+            ctx.logger.info(f"✅ Prediction submitted! TX: {{tx_hash}}")
         else:
             ctx.logger.error("❌ Submission failed")
             
     except Exception as e:
-        ctx.logger.error(f"❌ Error: {{{{e}}}}")
+        ctx.logger.error(f"❌ Error: {{e}}")
         import traceback
         ctx.logger.error(traceback.format_exc())
 
@@ -685,38 +706,6 @@ async def create_agent(agent_details: AgentDetails):
             "agent_details": start_response.json(),
             "onchain_registration": onchain_result
         }
-
-
-def fetch_pyth_hermes():
-    """ Fetch ETH/USD price feed from Pyth Hermes API """
-    url = f"https://hermes.pyth.network/v2/updates/price/latest?ids[]=0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace"
-    
-    try:
-        response = httpx.get(url)
-        data = response.json()
-        
-        if "parsed" in data and len(data["parsed"]) > 0:
-            eth_data = data["parsed"][0]
-            
-            # Extract price and expo
-            price_raw = int(eth_data["price"]["price"])
-            expo = int(eth_data["price"]["expo"])
-            actual_price = price_raw * (10 ** expo)
-            
-            # Extract EMA price
-            ema_price_raw = int(eth_data["ema_price"]["price"])
-            ema_expo = int(eth_data["ema_price"]["expo"])
-            actual_ema_price = ema_price_raw * (10 ** ema_expo)
-            
-            return {
-                "price": actual_price,
-                "ema_price": actual_ema_price,
-                "publish_time": eth_data["price"]["publish_time"]
-            }
-    except Exception as e:
-        print(f"Error fetching Pyth price: {e}")
-        return None
-
 
 # Gas Tracking API Endpoints
 

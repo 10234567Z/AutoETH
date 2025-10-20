@@ -28,3 +28,4 @@ __pycache__
 test-*
 judging_agent.py
 .gitignore
+gas_tracking.json

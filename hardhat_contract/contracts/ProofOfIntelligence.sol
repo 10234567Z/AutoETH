@@ -96,7 +96,7 @@ contract ProofOfIntelligence {
     // Rewards mappings
     mapping(string => uint256) public pendingRewards; // Agent address => pending POI tokens
 
-    uint256 public current_mempool = 1;
+    uint256 public current_mempool = 0;
 
     mapping(string => Agent) public agents;
     mapping(uint256 => Mempool) public mempoolTxs;
@@ -188,17 +188,9 @@ contract ProofOfIntelligence {
         return agents[agentAddress];
     }
 
-    function recordMempool(TxData memory txData) external {
-        mempoolTxs[current_mempool] = Mempool(
-            txData,
-            txData.gasPrice,
-            txData.blockNumber,
-            false
-        );
-        emit NewMempoolTx(txData.txHash, txData.gasPrice, txData.blockNumber);
-    }
-
     function isCurrentMempoolValidated() external view returns (bool) {
+        // Check if no transaction exists yet at current mempool index
+        if (mempoolTxs[current_mempool].txData.txHash == address(0)) return false;
         return mempoolTxs[current_mempool].isValidated;
     }
 
@@ -246,12 +238,29 @@ contract ProofOfIntelligence {
 
     // Manually start a new prediction round (called by judging agent)
     function startNewRound() external {
-        require(current_mempool >= 1, "Need at least 1 mempool transaction");
-        require(
-            currentPredictionRound == 0 || predictionRounds[currentPredictionRound].finalized,
-            "Round still active"
-        );
+        // Check that at least one ACTUAL mempool transaction exists (not just counter)
+        require(_hasValidMempoolTransactions(), "No mempool transactions available");
+        
+        // Check if previous round exists and had predictions
+        if (currentPredictionRound > 0) {
+            PredictionRound storage prevRound = predictionRounds[currentPredictionRound];
+            require(prevRound.finalized, "Previous round still active");
+            // Allow new round even if previous had 0 predictions (mempool tx carries over)
+        }
+        
         _startNewRound();
+    }
+    
+    // Check if any actual mempool transactions exist
+    function _hasValidMempoolTransactions() internal view returns (bool) {
+        // Check if at least one mempool tx exists at index 0 or higher
+        for (uint256 i = 0; i <= current_mempool; i++) {
+            if (mempoolTxs[i].txData.txHash != address(0)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     // Judge predictions and mine the block
@@ -267,6 +276,9 @@ contract ProofOfIntelligence {
             block.timestamp > round.submissionDeadline,
             "Still accepting predictions"
         );
+
+        // Validate all pending mempool transactions (mark them as validated)
+        _validatePendingMempoolTransactions();
 
         // Handle empty round
         if (round.predictionCount == 0) {
@@ -426,17 +438,12 @@ contract ProofOfIntelligence {
         return (currentBasePrice.price, currentBasePrice.publishTime);
     }
 
-    function validateMempool(
-        uint256 mempoolId,
-        bool isValid,
-        string memory agentAddress
-    ) internal onlyRegisteredAgent(agentAddress) {
-        require(
-            mempoolTxs[mempoolId].txData.txHash != address(0),
-            "Mempool tx does not exist"
-        );
-        mempoolTxs[mempoolId].isValidated = isValid;
-        current_mempool++;
+    // Validate all pending mempool transactions during finalization
+    function _validatePendingMempoolTransactions() internal {
+        // Only validate the current mempool transaction
+        if (mempoolTxs[current_mempool].txData.txHash != address(0) && !mempoolTxs[current_mempool].isValidated) {
+            mempoolTxs[current_mempool].isValidated = true;
+        }
     }
 
     // Determine winner: agent with closest prediction to actual price
@@ -522,19 +529,26 @@ contract ProofOfIntelligence {
     
     // Submit a mock mempool transaction (for testing)
     function submitMockMempoolTx(uint256 gasPrice) external {
+        // Check if current mempool is validated - if yes, move to next slot
+        if (mempoolTxs[current_mempool].isValidated) {
+            current_mempool++;
+        }
+        
+        // Create transaction data
         TxData memory txData = TxData({
             txHash: address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, current_mempool))))),
             gasPrice: gasPrice,
             blockNumber: block.number
         });
         
+        // Create or overwrite mempool transaction at current index
         mempoolTxs[current_mempool] = Mempool(
             txData,
             txData.gasPrice,
             txData.blockNumber,
             false
         );
-        current_mempool++;
+        
         emit NewMempoolTx(txData.txHash, txData.gasPrice, txData.blockNumber);
     }
     

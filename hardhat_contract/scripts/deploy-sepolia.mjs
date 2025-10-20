@@ -18,15 +18,18 @@ async function main() {
   
   const account = privateKeyToAccount(`0x${privateKey.replace('0x', '')}`);
   
+  // Use Alchemy for reliable Sepolia RPC
+  const ALCHEMY_RPC = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ";
+  
   const publicClient = createPublicClient({
     chain: sepolia,
-    transport: http(process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org"),
+    transport: http(ALCHEMY_RPC),
   });
 
   const walletClient = createWalletClient({
     account,
     chain: sepolia,
-    transport: http(process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org"),
+    transport: http(ALCHEMY_RPC),
   });
 
   console.log("📍 Deploying from:", account.address);
