@@ -1,8 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Navbar from "../../components/Navbar";
 
-import { getPythPriceUpdateFromEventSource } from "@pythnetwork/pyth-evm-js";
+
 
 const HERMES_URL = "https://hermes.pyth.network";
 
@@ -305,7 +304,6 @@ const Live = () => {
 
   return (
     <main className="min-h-screen bg-[#0A0B0F] py-20 px-4 flex flex-col items-center">
-      <Navbar />
       <h1 className="text-4xl md:text-5xl font-bold text-purple-400 mb-4 mt-10 text-center">
         Live Oracle Feed
       </h1>

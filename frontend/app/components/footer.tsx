@@ -10,7 +10,7 @@ const Footer = () => {
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center space-x-2">
               
-              <span className="text-lg font-semibold">Proof Of Intelligence</span>
+              <span className="text-lg font-semibold">AutoETH</span>
             </div>
             <p className="mt-4 text-sm text-gray-400">
               The first decentralized network for AI validation.
@@ -64,7 +64,7 @@ const Footer = () => {
             </Link>
           </div>
           <p className="mt-8 text-base text-gray-400 md:mt-0 md:order-1">
-            &copy; {new Date().getFullYear()} Proof Of Intelligence. All rights reserved.
+            &copy; {new Date().getFullYear()} AutoETH. All rights reserved.
           </p>
         </div>
       </div>

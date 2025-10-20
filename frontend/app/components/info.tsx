@@ -24,7 +24,7 @@ const Info = () => (
               <td className="font-semibold">Landing Page</td>
               <td>
                 Introduces the concept of{" "}
-                <span className="italic">Proof of Intelligence</span> and your
+                <span className="italic">AutoETH</span> and your
                 AI validator network
               </td>
               <td>

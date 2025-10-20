@@ -29,7 +29,7 @@ export default function SimplifiesDefi() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col items-center text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-purple-500 via-blue-500 to-purple-400 bg-clip-text text-transparent mb-4">
-            How Proof of Intelligence Simplifies Validation
+            How AutoETH Simplifies Validation
           </h2>
           <p className="text-lg text-gray-300 max-w-2xl">
             Experience the difference between legacy validation and our

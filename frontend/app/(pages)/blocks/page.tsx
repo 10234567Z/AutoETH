@@ -1,6 +1,5 @@
 'use client'
 import React, { useState, useEffect } from "react";
-import Navbar from "../../components/Navbars";
 
 // --- Type Definitions ---
 interface Block {
@@ -94,7 +93,6 @@ const BlocksPage = () => {
 
     return (
         <main className="min-h-screen bg-gradient-to-b from-[#1a1a2e] to-[#0A0B0F] py-20 px-4 text-white">
-            <Navbar />
             <div className="max-w-7xl mx-auto">
                 <h1 className="text-4xl font-bold text-center mb-12">Blockchain Explorer</h1>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

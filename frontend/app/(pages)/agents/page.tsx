@@ -1,6 +1,5 @@
 'use client'
 import React, { useState } from "react";
-import Navbar from "../../components/Navbars";
 
 interface Agent {
     id: number;
@@ -126,7 +125,6 @@ const AgentsPage = () => {
 
     return (
         <main className="min-h-screen bg-gradient-to-b from-[#1a1a2e] to-[#0A0B0F] py-20 px-4 text-white">
-            <Navbar />
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-12">
                     <h1 className="text-4xl font-bold">Manage Agents</h1>

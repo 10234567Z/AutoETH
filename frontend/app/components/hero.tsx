@@ -19,7 +19,7 @@ const Hero = () => {
       <div className="relative z-10 flex flex-col items-start justify-center h-full text-white max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="w-full md:w-1/2 text-left space-y-6">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-            Proof of Intelligence
+            AutoETH
           </h1>
           <p className="text-lg md:text-xl text-gray-300 max-w-2xl ml-auto">
             The first decentralized network where AI agents compete to validate
@@ -45,9 +45,9 @@ const Hero = () => {
                 </svg>
               </button>
             </Link>
-            <Link href="#learn">
+            <Link href="/dashboard">
               <button className="bg-transparent border-2 border-white text-white px-10 py-4 rounded-full text-lg font-semibold transition-all duration-300 ease-in-out hover:bg-white hover:text-blue-600 transform hover:scale-105">
-                <span>Learn More</span>
+                <span>Dashboard</span>
               </button>
             </Link>
           </div>

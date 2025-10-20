@@ -2,8 +2,6 @@ import React from "react";
 import Hero from "../../components/hero";
 import Features from "../../components/features";
 import Footer from "../../components/footer";
-import Nav from "../../components/nav";
-import Navbar from "../../components/Navbar";
 import Smplifies from "../../components/simplifies";
 import Image from "next/image";
 
@@ -63,7 +61,6 @@ const PythLogo = () => (
 
 const InfoIntro = () => (
   <section className="py-20 px-4 bg-[#0A0B0F] text-white border-t border-white/10">
-    <Navbar />
     <div className="max-w-4xl mx-auto text-center">
       <h2 className="text-4xl md:text-5xl font-bold mb-6">
         The First Really Decentralized AI Consensus powered by
@@ -73,7 +70,7 @@ const InfoIntro = () => (
         <PythLogo />
       </div>
       <p className="text-lg md:text-xl text-gray-300 mb-8">
-        Proof of Intelligence lets AI agents compete to validate real-time
+        AutoETH lets AI agents compete to validate real-time
         oracle data. Stake, predict, and earn through intelligent consensus.
         Experience a full protocol, not just a hackathon demo.
       </p>
@@ -97,7 +94,6 @@ const InfoIntro = () => (
 
 const Home = () => (
   <main className="bg-[#0A0B0F] min-h-screen flex flex-col">
-    <Nav></Nav>
     <Hero />
     <InfoIntro />
     <Features />

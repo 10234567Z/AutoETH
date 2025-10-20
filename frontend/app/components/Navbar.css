@@ -1,7 +1,18 @@
+.main-header {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 50;
+}
+
 .navbar {
-  position: absolute;
-  width: 40%;
-  margin: 20px auto;
+  position: relative; /* Changed from absolute */
+  width: auto; /* Changed from 40% */
+  margin: 0; /* Changed from 20px auto */
   padding: 15px 30px;
   border-radius: 30px;
   color: white;
@@ -9,12 +20,9 @@
   justify-content:center;
   gap: 30px;
   background-color: black;
-  transparency: 0.5;
   align-items: center;
   overflow: hidden;
-  left: 30%;
-  z-index: 50;
-  top: 1%;
+  /* Removed left, z-index, top */
 }
 
 .nav-left a,
@@ -52,4 +60,24 @@
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+.connect-wallet-btn, .wallet-address-btn {
+  background-color: #8a2be2; /* A nice purple */
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.connect-wallet-btn:hover, .wallet-address-btn:hover {
+  background-color: #9932cc; /* A darker purple */
+}
+
+.wallet-address-btn {
+  background-color: #9932cc; /* A neutral gray for connected state */
 }
