@@ -13,7 +13,7 @@ interface Agent {
 }
 
 // Minimal contract info (read-only)
-const CONTRACT_ADDRESS = "0x6b4376c102bdd8254dfcd01e6347a9e30d52400a";
+const CONTRACT_ADDRESS = "0x57b91375619a285f349efa85a390f06bc0ead4d6";
 const CONTRACT_ABI = [
   {
     inputs: [],
@@ -51,7 +51,6 @@ const CONTRACT_ABI = [
     type: "function",
   },
 ];
-
 
 const AgentCard = ({
   agent,
@@ -298,17 +297,17 @@ const AgentsPage = () => {
           bestGuesses,
           accuracy,
         ] = a;
-if (agentWalletAddr.toLowerCase() === addr.toLowerCase()) {
-  results.push({
-    id: agentAddress,
-    name: agentAddress.slice(0, 8) + "...",
-    avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${agentAddress}`,
-    description: `On-chain agent registered to ${agentWalletAddr}`,
-    reputation: Math.floor(Math.random() * 200) + 800,
-    accuracy: `${accuracy}%`,
-    wins: Number(bestGuesses),
-  });
-}
+        if (agentWalletAddr.toLowerCase() === addr.toLowerCase()) {
+          results.push({
+            id: agentAddress,
+            name: agentAddress.slice(0, 8) + "...",
+            avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${agentAddress}`,
+            description: `On-chain agent registered to ${agentWalletAddr}`,
+            reputation: Math.floor(Math.random() * 200) + 800,
+            accuracy: `${accuracy}%`,
+            wins: Number(bestGuesses),
+          });
+        }
         try {
           console.log("Checking leaderboard agent:", agentAddr);
           const a = await contract.getAgent(agentAddr);
