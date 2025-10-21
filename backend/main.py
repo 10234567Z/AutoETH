@@ -207,7 +207,7 @@ DEVIATION = {deviation}  # Convert to percentage: deviation/100 = 0.{deviation:0
 
 # Log agent info on startup
 print("=" * 80)
-print("🤖 AGENT INITIALIZATION")
+print("AGENT INITIALIZATION")
 print("=" * 80)
 print(f"Agent Name: {repr(agent_name)}")
 print(f"Agent Seed: {repr(seed)}")
@@ -355,32 +355,32 @@ def get_ai_prediction(eth_price_data):
 def submit_prediction_onchain(ctx, agent_addr, predicted_price):
     \"\"\"Submit prediction to smart contract\"\"\"
     try:
-        ctx.logger.info(f"🔍 DEBUG: PRIVATE_KEY exists: {{bool(PRIVATE_KEY)}}")
+        ctx.logger.info(f"DEBUG: PRIVATE_KEY exists: {{bool(PRIVATE_KEY)}}")
         
         if not PRIVATE_KEY:
-            ctx.logger.error("⚠️ No private key configured")
+            ctx.logger.error("ERROR: No private key configured")
             return None
         
-        ctx.logger.info(f"🔗 Connecting to {{SEPOLIA_RPC_TEMPLATE}}")
-        ctx.logger.info(f"📝 Contract: {{CONTRACT_ADDRESS_TEMPLATE}}")
-        ctx.logger.info(f"🤖 Agent: {{agent_addr}}")
-        ctx.logger.info(f"💰 Price: ${{predicted_price}}")
+        ctx.logger.info(f"Connecting to {{SEPOLIA_RPC_TEMPLATE}}")
+        ctx.logger.info(f"Contract: {{CONTRACT_ADDRESS_TEMPLATE}}")
+        ctx.logger.info(f"Agent: {{agent_addr}}")
+        ctx.logger.info(f"Price: ${{predicted_price}}")
         
         # Use the global w3 and contract instances
         global w3, contract
             
         account = w3.eth.account.from_key(PRIVATE_KEY)
-        ctx.logger.info(f"👛 Account: {{account.address}}")
+        ctx.logger.info(f"Account: {{account.address}}")
         
         # Convert price to int (multiply by 100 for 2 decimal precision)
         price_int = int(float(predicted_price) * 100)
-        ctx.logger.info(f"🔢 Price as int: {{price_int}}")
+        ctx.logger.info(f"Price as int: {{price_int}}")
         
         # Get current nonce and gas price (use 'pending' to include pending transactions)
         nonce = w3.eth.get_transaction_count(account.address, 'pending')
         gas_price = w3.eth.gas_price
-        ctx.logger.info(f"🔢 Nonce: {{nonce}}")
-        ctx.logger.info(f"⛽ Gas price: {{gas_price}} wei")
+        ctx.logger.info(f"Nonce: {{nonce}}")
+        ctx.logger.info(f"Gas price: {{gas_price}} wei")
         
         # Build transaction
         transaction = contract.functions.submitPrediction(agent_addr, price_int).build_transaction({{
@@ -391,24 +391,24 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
             'chainId': 11155111  # Sepolia
         }})
         
-        ctx.logger.info("📦 Signing transaction...")
+        ctx.logger.info("Signing transaction...")
         
         # Sign and send
         signed_txn = account.sign_transaction(transaction)
         tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
         
-        ctx.logger.info(f"✅ TX sent: {{tx_hash.hex()}}")
+        ctx.logger.info(f"TX sent: {{tx_hash.hex()}}")
         
         # Wait for receipt to get actual gas used
         try:
             receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
             gas_used = receipt['gasUsed']
-            ctx.logger.info(f"⛽ Gas used: {{gas_used}}")
+            ctx.logger.info(f"Gas used: {{gas_used}}")
             
             # Record gas usage to backend
             try:
                 gas_cost_eth = (gas_used * gas_price) / 1e18
-                ctx.logger.info(f"💸 Gas cost: {{gas_cost_eth:.6f}} ETH")
+                ctx.logger.info(f"Gas cost: {{gas_cost_eth:.6f}} ETH")
                 
                 # Send gas usage to backend API
                 response = httpx.post(
@@ -422,17 +422,17 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
                     timeout=5.0
                 )
                 if response.status_code == 200:
-                    ctx.logger.info("✅ Gas usage recorded")
+                    ctx.logger.info("Gas usage recorded")
                 else:
-                    ctx.logger.warning(f"⚠️ Failed to record gas: {{response.text}}")
+                    ctx.logger.warning(f"WARNING: Failed to record gas: {{response.text}}")
             except Exception as e:
-                ctx.logger.warning(f"⚠️ Could not record gas usage: {{e}}")
+                ctx.logger.warning(f"WARNING: Could not record gas usage: {{e}}")
         except Exception as e:
-            ctx.logger.warning(f"⚠️ Could not get receipt: {{e}}")
+            ctx.logger.warning(f"WARNING: Could not get receipt: {{e}}")
         
         return tx_hash.hex()
     except Exception as e:
-        ctx.logger.error(f"❌ Error: {{e}}")
+        ctx.logger.error(f"ERROR: {{e}}")
         import traceback
         ctx.logger.error(traceback.format_exc())
         return None
@@ -441,14 +441,14 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
 @agent.on_interval(period=10.0)
 async def check_and_submit_prediction(ctx: Context):
     \"\"\"Check every 10 seconds if we can submit a prediction\"\"\"
-    ctx.logger.info(f"⏰ Checking if can submit prediction...")
+    ctx.logger.info(f"Checking if can submit prediction...")
     
     try:
         # Check if there's an active round
         round_id = contract.functions.currentPredictionRound().call()
         
         if round_id == 0:
-            ctx.logger.info("📭 No active round yet")
+            ctx.logger.info("No active round yet")
             return
         
         # Get round info
@@ -458,13 +458,13 @@ async def check_and_submit_prediction(ctx: Context):
         prediction_count = round_data[3]
         
         if finalized:
-            ctx.logger.info(f"✅ Round #{{round_id}} already finalized")
+            ctx.logger.info(f"Round #{{round_id}} already finalized")
             return
         
         # Check if within submission window (25s out of 40s total round)
         current_time = int(datetime.now().timestamp())
         if current_time > deadline:
-            ctx.logger.info(f"⏰ Round #{{round_id}} submission window closed (judging phase)")
+            ctx.logger.info(f"Round #{{round_id}} submission window closed (judging phase)")
             return
         
         # Check if already predicted this round
@@ -472,15 +472,15 @@ async def check_and_submit_prediction(ctx: Context):
             for i in range(prediction_count):
                 participant = contract.functions.participants(round_id, i).call()
                 if participant == AGENT_ADDRESS:
-                    ctx.logger.info(f"✅ Already predicted in round #{{round_id}}")
+                    ctx.logger.info(f"Already predicted in round #{{round_id}}")
                     return
         except:
             pass  # If we can't check, proceed anyway
         
         # All good - submit prediction!
-        ctx.logger.info(f"🎯 Round #{{round_id}} active - submitting prediction...")
+        ctx.logger.info(f"Round #{{round_id}} active - submitting prediction...")
         ctx.logger.info("=" * 60)
-        ctx.logger.info("🔍 AGENT ADDRESS DEBUG INFO")
+        ctx.logger.info("AGENT ADDRESS DEBUG INFO")
         ctx.logger.info(f"  Agent Name: {repr(agent_name)}")
         ctx.logger.info(f"  Agent Address (runtime): {{agent.address}}")
         ctx.logger.info(f"  AGENT_ADDRESS variable: {{AGENT_ADDRESS}}")
@@ -493,16 +493,16 @@ async def check_and_submit_prediction(ctx: Context):
             ctx.logger.error("Failed to fetch ETH price")
             return
         
-        ctx.logger.info(f"📊 Current ETH price: ${{eth_price_data['price']}}")
+        ctx.logger.info(f"Current ETH price: ${{eth_price_data['price']}}")
         
         # Get AI prediction
         predicted_price = get_ai_prediction(eth_price_data)
-        ctx.logger.info(f"🎯 AI Prediction (raw): ${{predicted_price}}")
+        ctx.logger.info(f"AI Prediction (raw): ${{predicted_price}}")
         
         # Apply deviation adjustment
         deviation_multiplier = 1 - (DEVIATION / 100)
         adjusted_price = predicted_price * deviation_multiplier
-        ctx.logger.info(f"📉 Deviation: {{DEVIATION}}% -> Adjusted: ${{adjusted_price:.2f}}")
+        ctx.logger.info(f"Deviation: {{DEVIATION}}% -> Adjusted: ${{adjusted_price:.2f}}")
         
         # Check gas balance before submitting
         try:
@@ -515,28 +515,28 @@ async def check_and_submit_prediction(ctx: Context):
                 gas_price = w3.eth.gas_price
                 estimated_cost = (500000 * gas_price) / 1e18
                 
-                ctx.logger.info(f"💰 Remaining balance: {{remaining:.6f}} ETH")
-                ctx.logger.info(f"⛽ Estimated cost: {{estimated_cost:.6f}} ETH")
+                ctx.logger.info(f"Remaining balance: {{remaining:.6f}} ETH")
+                ctx.logger.info(f"Estimated cost: {{estimated_cost:.6f}} ETH")
                 
                 if remaining < estimated_cost:
-                    ctx.logger.error(f"❌ Insufficient gas balance! Need {{estimated_cost:.6f}} ETH, have {{remaining:.6f}} ETH")
+                    ctx.logger.error(f"ERROR: Insufficient gas balance! Need {{estimated_cost:.6f}} ETH, have {{remaining:.6f}} ETH")
                     return
                 else:
-                    ctx.logger.info("✅ Sufficient gas balance")
+                    ctx.logger.info("Sufficient gas balance")
             else:
-                ctx.logger.warning("⚠️ Could not check gas balance, proceeding anyway")
+                ctx.logger.warning("WARNING: Could not check gas balance, proceeding anyway")
         except Exception as e:
-            ctx.logger.warning(f"⚠️ Gas balance check failed: {{e}}, proceeding anyway")
+            ctx.logger.warning(f"WARNING: Gas balance check failed: {{e}}, proceeding anyway")
         
         # Submit to blockchain
         tx_hash = submit_prediction_onchain(ctx, AGENT_ADDRESS, adjusted_price)
         if tx_hash:
-            ctx.logger.info(f"✅ Prediction submitted! TX: {{tx_hash}}")
+            ctx.logger.info(f"Prediction submitted! TX: {{tx_hash}}")
         else:
-            ctx.logger.error("❌ Submission failed")
+            ctx.logger.error("ERROR: Submission failed")
             
     except Exception as e:
-        ctx.logger.error(f"❌ Error: {{e}}")
+        ctx.logger.error(f"ERROR: {{e}}")
         import traceback
         ctx.logger.error(traceback.format_exc())
 
@@ -595,7 +595,7 @@ agent.include(protocol, publish_manifest=True)
 async def register_onchain(agent_address: str, agent_wallet: str):
     """Register the agent on-chain using smart contract"""
     # REMOVED: Frontend handles registration with user's wallet
-    print(f"⚠️  On-chain registration skipped - frontend will handle with user wallet")
+    print(f"WARNING: On-chain registration skipped - frontend will handle with user wallet")
     return {
         "status": "skipped",
         "message": "Frontend handles registration with user wallet"
