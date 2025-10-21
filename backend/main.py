@@ -22,9 +22,9 @@ AGENTVERSE_BASE_URL = "https://agentverse.ai/v1"
 ASI_ONE_API_KEY  = os.getenv("ASIONE_API_KEY")
 
 # Smart Contract Configuration
-RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
-CONTRACT_ADDRESS = "0x6b4376c102bdd8254dfcd01e6347a9e30d52400a"
-POI_TOKEN_ADDRESS = "0xc19d6bc4b4dc148e404e1ecd14f1ed7f9dcaf35b"
+SEPOLIA_RPC = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
+CONTRACT_ADDRESS = "0x57b91375619a285f349efa85a390f06bc0ead4d6"
+POI_TOKEN_ADDRESS = "0x434245be25424cfd0e6afa0f07470602dfeb349e"
 SEPOLIA_PRIVATE_KEY = os.getenv("SEPOLIA_PRIVATE_KEY", "0x5c86c08228cbd7f2e7890e8bfe1288ff7f90f64404fa9801f5f80320e44a0e6c")
 
 # Gas tracking configuration
@@ -33,7 +33,7 @@ INITIAL_STAKE_AMOUNT = 0.1  # ETH
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:3002")  # Set to ngrok URL in production
 
 # Initialize Web3
-w3 = Web3(Web3.HTTPProvider(RPC_URL))
+w3 = Web3(Web3.HTTPProvider(SEPOLIA_RPC))
 
 # Gas tracking storage
 def load_gas_tracking() -> Dict:
@@ -177,8 +177,8 @@ client = OpenAI(
 
 # Smart Contract Configuration (for agent template)
 SEPOLIA_RPC_TEMPLATE = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
-CONTRACT_ADDRESS_TEMPLATE = "0x6b4376c102bdd8254dfcd01e6347a9e30d52400a"
-POI_TOKEN_ADDRESS_TEMPLATE = "0xc19d6bc4b4dc148e404e1ecd14f1ed7f9dcaf35b"
+CONTRACT_ADDRESS_TEMPLATE = "0x57b91375619a285f349efa85a390f06bc0ead4d6"
+POI_TOKEN_ADDRESS_TEMPLATE = "0x434245be25424cfd0e6afa0f07470602dfeb349e"
 PRIVATE_KEY = {repr(SEPOLIA_PRIVATE_KEY)}
 
 # Initialize Web3

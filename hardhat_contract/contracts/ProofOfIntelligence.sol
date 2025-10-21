@@ -188,10 +188,14 @@ contract ProofOfIntelligence {
         return agents[agentAddress];
     }
 
-    function isCurrentMempoolValidated() external view returns (bool) {
-        // Check if no transaction exists yet at current mempool index
-        if (mempoolTxs[current_mempool].txData.txHash == address(0)) return false;
-        return mempoolTxs[current_mempool].isValidated;
+    function isCurrentMempoolValidated() public view returns (bool) {
+        // current_mempool is a count, so if 0, no mempool exists
+        if (current_mempool == 0) return false;
+        
+        // Check the last mempool (at index current_mempool - 1)
+        uint256 lastIndex = current_mempool - 1;
+        if (mempoolTxs[lastIndex].txData.txHash == address(0)) return false;
+        return mempoolTxs[lastIndex].isValidated;
     }
 
     function submitPrediction(
@@ -241,11 +245,13 @@ contract ProofOfIntelligence {
         // Check that at least one ACTUAL mempool transaction exists (not just counter)
         require(_hasValidMempoolTransactions(), "No mempool transactions available");
         
+        // CRITICAL: Current mempool must NOT be validated yet (must be fresh/new)
+        require(!isCurrentMempoolValidated(), "Current mempool already validated - submit new mempool tx first");
+        
         // Check if previous round exists and had predictions
         if (currentPredictionRound > 0) {
             PredictionRound storage prevRound = predictionRounds[currentPredictionRound];
             require(prevRound.finalized, "Previous round still active");
-            // Allow new round even if previous had 0 predictions (mempool tx carries over)
         }
         
         _startNewRound();
@@ -253,8 +259,11 @@ contract ProofOfIntelligence {
     
     // Check if any actual mempool transactions exist
     function _hasValidMempoolTransactions() internal view returns (bool) {
-        // Check if at least one mempool tx exists at index 0 or higher
-        for (uint256 i = 0; i <= current_mempool; i++) {
+        // current_mempool is a count, so if 0, no mempools exist
+        if (current_mempool == 0) return false;
+        
+        // Check if at least one mempool tx exists (iterate from 0 to current_mempool - 1)
+        for (uint256 i = 0; i < current_mempool; i++) {
             if (mempoolTxs[i].txData.txHash != address(0)) {
                 return true;
             }
@@ -277,15 +286,16 @@ contract ProofOfIntelligence {
             "Still accepting predictions"
         );
 
-        // Validate all pending mempool transactions (mark them as validated)
-        _validatePendingMempoolTransactions();
-
-        // Handle empty round
+        // Handle empty round first (do NOT validate mempool if no predictions)
         if (round.predictionCount == 0) {
             round.finalized = true;
             emit RoundFinalized(currentPredictionRound, "", 0);
             return;
         }
+
+        // Validate all pending mempool transactions (mark them as validated)
+        // Only validate when the round had predictions and is being finalized.
+        _validatePendingMempoolTransactions();
 
         // Read current on-chain price from Pyth
         (int256 actualPrice, ) = readPythPrice(priceFeedId);
@@ -440,9 +450,12 @@ contract ProofOfIntelligence {
 
     // Validate all pending mempool transactions during finalization
     function _validatePendingMempoolTransactions() internal {
-        // Only validate the current mempool transaction
-        if (mempoolTxs[current_mempool].txData.txHash != address(0) && !mempoolTxs[current_mempool].isValidated) {
-            mempoolTxs[current_mempool].isValidated = true;
+        // current_mempool is a count, validate the last mempool (at index current_mempool - 1)
+        if (current_mempool == 0) return; // No mempool to validate
+        
+        uint256 lastIndex = current_mempool - 1;
+        if (mempoolTxs[lastIndex].txData.txHash != address(0) && !mempoolTxs[lastIndex].isValidated) {
+            mempoolTxs[lastIndex].isValidated = true;
         }
     }
 
@@ -529,20 +542,34 @@ contract ProofOfIntelligence {
     
     // Submit a mock mempool transaction (for testing)
     function submitMockMempoolTx(uint256 gasPrice) external {
-        // Check if current mempool is validated - if yes, move to next slot
-        if (mempoolTxs[current_mempool].isValidated) {
-            current_mempool++;
+        uint256 targetIndex;
+        
+        if (current_mempool == 0) {
+            // First mempool - create at index 0, then increment count to 1
+            targetIndex = 0;
+            current_mempool = 1;
+        } else {
+            // Check if last mempool (at index current_mempool - 1) is validated
+            uint256 lastIndex = current_mempool - 1;
+            if (mempoolTxs[lastIndex].isValidated) {
+                // Last mempool validated - create new one at current_mempool index and increment count
+                targetIndex = current_mempool;
+                current_mempool++;
+            } else {
+                // Last mempool not validated - overwrite it
+                targetIndex = lastIndex;
+            }
         }
         
         // Create transaction data
         TxData memory txData = TxData({
-            txHash: address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, current_mempool))))),
+            txHash: address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, targetIndex))))),
             gasPrice: gasPrice,
             blockNumber: block.number
         });
         
-        // Create or overwrite mempool transaction at current index
-        mempoolTxs[current_mempool] = Mempool(
+        // Create or overwrite mempool transaction at target index
+        mempoolTxs[targetIndex] = Mempool(
             txData,
             txData.gasPrice,
             txData.blockNumber,
