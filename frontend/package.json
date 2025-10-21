@@ -9,11 +9,14 @@
   },
   "dependencies": {
     "@pythnetwork/pyth-evm-js": "^2.0.0-alpha2",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "next",
     "ethers": "^6.15.0",
     "next": "15.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "sonner": "^2.0.7"
+    "sonner": "^2.0.7",
+    "three": "^0.160.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
