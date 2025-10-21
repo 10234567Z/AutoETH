@@ -438,7 +438,7 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
         return None
 
 
-@agent.on_interval(period=10.0)
+@agent.on_interval(period=5.0)
 async def check_and_submit_prediction(ctx: Context):
     \"\"\"Check every 10 seconds if we can submit a prediction\"\"\"
     ctx.logger.info(f"Checking if can submit prediction...")
