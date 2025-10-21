@@ -18,6 +18,7 @@ const Dashboard = () => {
 
   return (
     <main className="min-h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
+
       <div className="absolute inset-0 z-0 opacity-50">
         <div className="absolute w-96 h-96 bg-purple-900 rounded-full -top-20 -left-20 opacity-30 floating-shape" />
         <div

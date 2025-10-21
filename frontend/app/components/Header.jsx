@@ -1,4 +1,4 @@
-import Navbar from './Navbar';
+import Navbar from './Navbars';
 import WalletButton from './WalletButton';
 import './Navbar.css';
 
