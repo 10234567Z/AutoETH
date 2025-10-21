@@ -15,26 +15,26 @@ interface Agent {
 // Minimal contract info (read-only)
 const CONTRACT_ADDRESS = "0x6b4376c102bdd8254dfcd01e6347a9e30d52400a";
 const CONTRACT_ABI = [
-  // getLeaderboard() -> string[]
   {
     inputs: [],
     name: "getLeaderboard",
-    outputs: [{ internalType: "string[]", name: "", type: "string[]" }],
+    outputs: [{ internalType: "address[]", name: "", type: "address[]" }],
     stateMutability: "view",
     type: "function",
   },
-  // getAgent(string) -> Agent struct
   {
-    inputs: [{ internalType: "string", name: "agentAddress", type: "string" }],
+    inputs: [
+      { internalType: "address", name: "agentAddress", type: "address" },
+    ],
     name: "getAgent",
     outputs: [
       {
         components: [
-          { internalType: "string", name: "agentAddress", type: "string" },
+          { internalType: "address", name: "agentAddress", type: "address" },
           {
-            internalType: "string",
+            internalType: "address",
             name: "agentWalletAddress",
-            type: "string",
+            type: "address",
           },
           { internalType: "uint256", name: "totalGuesses", type: "uint256" },
           { internalType: "uint256", name: "bestGuesses", type: "uint256" },
@@ -51,6 +51,7 @@ const CONTRACT_ABI = [
     type: "function",
   },
 ];
+
 
 const AgentCard = ({
   agent,
@@ -248,16 +249,68 @@ const AgentsPage = () => {
       );
 
       console.log("Fetching agents for wallet:", addr);
+      const results: Agent[] = [];
 
-      // get leaderboard addresses
+      // First try to get this wallet's registered agent directly
+      try {
+        // Try the wallet address as agent ID first
+        const directAgent = await contract.getAgent(addr);
+        console.log("Looking for agent with wallet:", addr);
+        console.log("Direct agent lookup result:", directAgent);
+
+        if (directAgent && directAgent.agentWalletAddress) {
+          const cleanWalletAddr = directAgent.agentWalletAddress.toLowerCase();
+          const cleanInputAddr = addr.toLowerCase();
+          if (cleanWalletAddr === cleanInputAddr) {
+            results.push({
+              id: directAgent.agentAddress || addr,
+              name: directAgent.agentAddress || "Your Agent",
+              avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
+                addr
+              )}`,
+              description: `Your registered agent`,
+              reputation: Math.floor(Math.random() * 200) + 800,
+              accuracy:
+                Number(directAgent.accuracy || 0) > 0
+                  ? `${directAgent.accuracy}%`
+                  : "0%",
+              wins: Number(directAgent.bestGuesses || 0),
+            });
+          }
+        }
+      } catch (directErr) {
+        console.log(
+          "No agent found by direct lookup, checking leaderboard...",
+          directErr
+        );
+      }
+
+      // Also check leaderboard for any other agents owned by this wallet
       const leaderboard: string[] = await contract.getLeaderboard();
       console.log("Got leaderboard:", leaderboard);
 
-      const results: Agent[] = [];
-
       for (const agentAddr of leaderboard) {
+        const a = await contract.getAgent(agentAddr);
+        const [
+          agentAddress,
+          agentWalletAddr,
+          totalGuesses,
+          bestGuesses,
+          accuracy,
+        ] = a;
+if (agentWalletAddr.toLowerCase() === addr.toLowerCase()) {
+  results.push({
+    id: agentAddress,
+    name: agentAddress.slice(0, 8) + "...",
+    avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${agentAddress}`,
+    description: `On-chain agent registered to ${agentWalletAddr}`,
+    reputation: Math.floor(Math.random() * 200) + 800,
+    accuracy: `${accuracy}%`,
+    wins: Number(bestGuesses),
+  });
+}
         try {
-          console.log("Fetching agent:", agentAddr);
+          console.log("Checking leaderboard agent:", agentAddr);
           const a = await contract.getAgent(agentAddr);
           console.log("Agent data:", a);
 
@@ -276,7 +329,7 @@ const AgentsPage = () => {
           const cleanWalletAddr = agentWalletAddr?.toLowerCase?.() || "";
           const cleanInputAddr = addr?.toLowerCase?.() || "";
 
-          console.log("Comparing wallets:", {
+          console.log("Comparing wallets for", agentAddr, {
             agent: cleanWalletAddr,
             connected: cleanInputAddr,
             matches: cleanWalletAddr === cleanInputAddr,
