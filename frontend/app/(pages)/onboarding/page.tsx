@@ -131,7 +131,7 @@ const Onboarding = () => {
     setLoading(true);
 
     try {
-      // Register via backend API
+      // STEP 1: Register via backend API and get Agentverse address
       const response = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -143,7 +143,16 @@ const Onboarding = () => {
         throw new Error(msg || "Backend registration failed");
       }
 
-      // --- On-chain registration ---
+      const responseData = await response.json();
+      const agentverseAddress = responseData.agent_address;
+
+      if (!agentverseAddress) {
+        throw new Error("Failed to get Agentverse address from backend");
+      }
+
+      console.log("✅ Agent created on Agentverse:", agentverseAddress);
+
+      // STEP 2: On-chain registration with Agentverse address
       try {
         const anyWindow: any = window;
         if (!anyWindow.ethereum)
@@ -189,8 +198,9 @@ const Onboarding = () => {
           signer
         );
 
+        // CRITICAL: Use Agentverse address, not human name
         const agentTuple = [
-          name || walletAddress,
+          agentverseAddress, // ✅ Use Agentverse address from backend
           walletAddress,
           0, // totalGuesses
           0, // bestGuesses
@@ -198,6 +208,8 @@ const Onboarding = () => {
           0, // lastGuessBlock
           deviation, // deviation (required by contract)
         ];
+        
+        console.log("📝 Registering on-chain with Agentverse address:", agentverseAddress);
         const tx = await contract.registerAgent(agentTuple);
         console.log("On-chain tx submitted:", tx.hash);
         await tx.wait();
