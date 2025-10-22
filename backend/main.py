@@ -23,8 +23,8 @@ ASI_ONE_API_KEY  = os.getenv("ASIONE_API_KEY")
 
 # Smart Contract Configuration
 SEPOLIA_RPC = "https://base-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
-CONTRACT_ADDRESS = "0xc6f1afac969f024c16c35839f928844c89dd863a"
-POI_TOKEN_ADDRESS = "0x18c58b12778d85679e063a7f96bd10dcc90eabcb"
+CONTRACT_ADDRESS = "0x5e186dc22d7c7bf59fde73eca7853c40be1d159d"
+POI_TOKEN_ADDRESS = "0x30da20e0b0d09409335319ed1335c5a6e7518c5a"
 SEPOLIA_PRIVATE_KEY = os.getenv("SEPOLIA_PRIVATE_KEY")
 
 # Gas tracking configuration
@@ -177,8 +177,8 @@ client = OpenAI(
 
 # Smart Contract Configuration (for agent template)
 SEPOLIA_RPC_TEMPLATE = "https://base-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
-CONTRACT_ADDRESS_TEMPLATE = "0xc6f1afac969f024c16c35839f928844c89dd863a"
-POI_TOKEN_ADDRESS_TEMPLATE = "0x18c58b12778d85679e063a7f96bd10dcc90eabcb"
+CONTRACT_ADDRESS_TEMPLATE = "0x5e186dc22d7c7bf59fde73eca7853c40be1d159d"
+POI_TOKEN_ADDRESS_TEMPLATE = "0x30da20e0b0d09409335319ed1335c5a6e7518c5a"
 PRIVATE_KEY = {repr(SEPOLIA_PRIVATE_KEY)}
 
 # Initialize Web3

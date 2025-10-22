@@ -101,6 +101,9 @@ contract ProofOfIntelligence {
     mapping(string => Agent) public agents;
     mapping(uint256 => Mempool) public mempoolTxs;
     string[] public top10Agents;
+    
+    // Wallet to agent addresses mapping
+    mapping(address => string[]) public walletToAgents;
 
     error POI__NotRegisteredAgent();
     error POI__InvalidPrediction();
@@ -179,6 +182,11 @@ contract ProofOfIntelligence {
             "Agent already registered"
         );
         agents[agent.agentAddress] = agent;
+        
+        // Add agent to wallet mapping
+        address wallet = parseAddress(agent.agentWalletAddress);
+        walletToAgents[wallet].push(agent.agentAddress);
+        
         emit AgentRegistered(agent.agentAddress, agent.agentWalletAddress);
     }
 
@@ -329,6 +337,9 @@ contract ProofOfIntelligence {
                 agents[agentAddr].totalGuesses++;
                 _updateAgentBias(agentAddr);
                 _updateAgentAccuracy(agentAddr);
+                
+                // Update leaderboard after stats are updated
+                _updateLeaderboard(agentAddr);
             }
         }
         
@@ -412,30 +423,84 @@ contract ProofOfIntelligence {
         emit BlockMined(currentBlockNumber, minerAgent, newBlockHash);
     }
 
-    function updateLeaderboard(Agent memory newAgentDetails) internal {
-        int256 position = 1;
+    /**
+     * @dev Update leaderboard with agent's new stats
+     * Maintains a sorted top 10 list by accuracy
+     * @param agentAddress The agent to potentially add/update in leaderboard
+     */
+    function _updateLeaderboard(string memory agentAddress) internal {
+        Agent storage agent = agents[agentAddress];
         uint256 len = top10Agents.length;
+        
+        // Check if agent is already in leaderboard
+        int256 currentPosition = -1;
         for (uint256 i = 0; i < len; i++) {
-            if (newAgentDetails.accuracy > agents[top10Agents[i]].accuracy) {
-                position = int256(i) + 1;
+            if (keccak256(bytes(top10Agents[i])) == keccak256(bytes(agentAddress))) {
+                currentPosition = int256(i);
                 break;
             }
         }
-        if (position > 10) {
-            return; // Not in top 10
-        }
+        
+        // If leaderboard not full, add agent
         if (len < 10) {
-            top10Agents.push(newAgentDetails.agentAddress);
-        } else {
-            top10Agents[uint256(position) - 1] = newAgentDetails.agentAddress;
+            if (currentPosition == -1) {
+                top10Agents.push(agentAddress);
+                _sortLeaderboard();
+                emit LeaderboardUpdated(top10Agents);
+            } else {
+                // Agent already in list, just resort
+                _sortLeaderboard();
+                emit LeaderboardUpdated(top10Agents);
+            }
+            return;
         }
-        // Shift agents down the leaderboard
-        for (uint256 i = uint256(position); i < len; i++) {
-            if (i + 1 < len) {
-                top10Agents[i] = top10Agents[i + 1];
+        
+        // Leaderboard is full (10 agents)
+        if (currentPosition != -1) {
+            // Agent already in top 10, resort
+            _sortLeaderboard();
+            emit LeaderboardUpdated(top10Agents);
+            return;
+        }
+        
+        // Agent not in top 10, check if they should be
+        // Compare with the worst agent (last in sorted list after sorting)
+        _sortLeaderboard();
+        Agent storage worstAgent = agents[top10Agents[9]];
+        
+        // Replace if new agent has better accuracy, or same accuracy but more guesses
+        if (agent.accuracy > worstAgent.accuracy || 
+            (agent.accuracy == worstAgent.accuracy && agent.totalGuesses > worstAgent.totalGuesses)) {
+            top10Agents[9] = agentAddress;
+            _sortLeaderboard();
+            emit LeaderboardUpdated(top10Agents);
+        }
+    }
+    
+    /**
+     * @dev Sort leaderboard by accuracy (descending)
+     * Uses bubble sort (fine for only 10 items)
+     */
+    function _sortLeaderboard() internal {
+        uint256 len = top10Agents.length;
+        if (len <= 1) return;
+        
+        // Bubble sort - descending order by accuracy
+        for (uint256 i = 0; i < len - 1; i++) {
+            for (uint256 j = 0; j < len - i - 1; j++) {
+                Agent storage agent1 = agents[top10Agents[j]];
+                Agent storage agent2 = agents[top10Agents[j + 1]];
+                
+                // Sort by accuracy (descending), then by bestGuesses as tiebreaker
+                if (agent1.accuracy < agent2.accuracy || 
+                    (agent1.accuracy == agent2.accuracy && agent1.bestGuesses < agent2.bestGuesses)) {
+                    // Swap
+                    string memory temp = top10Agents[j];
+                    top10Agents[j] = top10Agents[j + 1];
+                    top10Agents[j + 1] = temp;
+                }
             }
         }
-        emit LeaderboardUpdated(top10Agents);
     }
 
     function readPythPrice(
@@ -924,6 +989,40 @@ contract ProofOfIntelligence {
      */
     function getLeaderboard() external view returns (string[] memory) {
         return top10Agents;
+    }
+
+    /**
+     * @dev Get agent addresses by wallet address
+     * @param wallet The wallet address to query
+     * @return Array of agent addresses registered by this wallet
+     */
+    function getAgentsByWallet(address wallet) external view returns (string[] memory) {
+        return walletToAgents[wallet];
+    }
+
+    /**
+     * @dev Get full agent details by wallet address
+     * @param wallet The wallet address to query
+     * @return Array of Agent structs registered by this wallet
+     */
+    function getAgentDetailsByWallet(address wallet) external view returns (Agent[] memory) {
+        string[] memory agentAddresses = walletToAgents[wallet];
+        Agent[] memory agentDetails = new Agent[](agentAddresses.length);
+        
+        for (uint256 i = 0; i < agentAddresses.length; i++) {
+            agentDetails[i] = agents[agentAddresses[i]];
+        }
+        
+        return agentDetails;
+    }
+
+    /**
+     * @dev Get count of agents registered by wallet
+     * @param wallet The wallet address to query
+     * @return Number of agents registered by this wallet
+     */
+    function getAgentCountByWallet(address wallet) external view returns (uint256) {
+        return walletToAgents[wallet].length;
     }
 
     /**
