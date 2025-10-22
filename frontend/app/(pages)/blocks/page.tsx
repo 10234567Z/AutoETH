@@ -175,62 +175,98 @@ const BlocksPage = () => {
         provider
       );
 
+      console.log("Fetching blocks from contract:", CONTRACT_ADDRESS);
+      
+      // Check network first
+      const network = await provider.getNetwork();
+      const chainId = typeof network.chainId === 'number' ? network.chainId : Number(network.chainId);
+      console.log("Current network:", chainId);
+      
+      if (chainId !== 11155111) {
+        throw new Error(`Please switch to Sepolia network (current: ${chainId})`);
+      }
+
       // Fetch latest blocks (10)
       const rawBlocks = await contract.getLatestBlocks(10);
-      const parsedBlocks: OnchainBlock[] = rawBlocks.map((b: any) => ({
-        blockNumber: Number(b.blockNumber),
-        timestamp: Number(b.timestamp),
-        minerAgent: String(b.minerAgent),
-        blockHash:
-          typeof b.blockHash === "string"
-            ? b.blockHash
-            : b.blockHash
-            ? b.blockHash.toString()
-            : "",
-        previousBlockHash:
-          typeof b.previousBlockHash === "string"
-            ? b.previousBlockHash
-            : b.previousBlockHash
-            ? b.previousBlockHash.toString()
-            : "",
-        targetPrice: Number(b.targetPrice || 0),
-      }));
+      console.log("Raw blocks from chain:", rawBlocks);
+      
+      const parsedBlocks: OnchainBlock[] = rawBlocks.map((b: any) => {
+        // Handle both array and object responses
+        const block = Array.isArray(b) ? {
+          blockNumber: b[0],
+          timestamp: b[1],
+          minerAgent: b[2],
+          blockHash: b[3],
+          previousBlockHash: b[4],
+          targetPrice: b[5]
+        } : b;
+
+        return {
+          blockNumber: Number(block.blockNumber || 0),
+          timestamp: Number(block.timestamp || 0),
+          minerAgent: String(block.minerAgent || ''),
+          blockHash: typeof block.blockHash === 'string' 
+            ? block.blockHash 
+            : block.blockHash?.toString() || '',
+          previousBlockHash: typeof block.previousBlockHash === 'string'
+            ? block.previousBlockHash
+            : block.previousBlockHash?.toString() || '',
+          targetPrice: Number(block.targetPrice || 0)
+        };
+      });
+
+      console.log("Parsed blocks:", parsedBlocks);
 
       setBlocks(parsedBlocks);
 
       // Fetch mempool count
+      console.log("Fetching mempool count...");
       let mempoolCount = 0;
       try {
         const cnt = await contract.getCurrentMempoolCount();
         mempoolCount = Number(cnt || 0);
+        console.log("Current mempool count:", mempoolCount);
       } catch (e) {
-        // if function missing, skip
+        console.log("getCurrentMempoolCount not available, skipping mempool fetch");
         mempoolCount = 0;
       }
 
       const pools: MempoolSnapshot[] = [];
       if (mempoolCount > 0) {
+        console.log("Fetching mempool transactions from 0 to", mempoolCount - 1);
         // Fetch full range
         const rawPools = await contract.getMempoolTransactions(
           0,
           mempoolCount - 1
         );
+        console.log("Raw mempool transactions:", rawPools);
+
         rawPools.forEach((p: any, idx: number) => {
-          // p expected to have txData, gasPrice, blockNumber, isValidated
-          const txData = p.txData || {};
-          const txHash = txData.txHash
-            ? txData.txHash
-            : txData[0]
-            ? txData[0]
-            : "";
+          // Handle both array and object responses
+          const poolItem = Array.isArray(p) ? {
+            txData: p[0],
+            gasPrice: p[1],
+            blockNumber: p[2],
+            isValidated: p[3]
+          } : p;
+
+          // Handle both array and object responses for txData
+          const txData = poolItem.txData || {};
+          const txHash = Array.isArray(txData) 
+            ? String(txData[0] || '')
+            : typeof txData === 'object' && txData.txHash
+              ? String(txData.txHash)
+              : String(txData || '');
+
           const item: MempoolItem = {
-            txHash: txHash.toString(),
-            gasPrice: Number(p.gasPrice || 0),
-            blockNumber: Number(p.blockNumber || 0),
-            isValidated: Boolean(p.isValidated),
+            txHash: txHash,
+            gasPrice: Number(poolItem.gasPrice || 0),
+            blockNumber: Number(poolItem.blockNumber || 0),
+            isValidated: Boolean(poolItem.isValidated),
           };
           pools.push({ id: idx, txs: [item] });
         });
+        console.log("Parsed mempool transactions:", pools);
       }
 
       setMempools(pools);
