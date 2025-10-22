@@ -3,9 +3,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
 import { toast } from "sonner";
 import "./Navbar.css";
+import { useWallet } from "../context/WalletContext";
 
 export default function WalletButton() {
-  const [account, setAccount] = useState(null);
+  const { walletAddress, setWalletAddress, signOut } = useWallet();
   const [loading, setLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -46,7 +47,10 @@ export default function WalletButton() {
           method: "eth_accounts",
         });
         if (accounts.length > 0) {
-          setAccount(accounts[0]);
+          setWalletAddress(accounts[0]);
+          try {
+            localStorage.setItem("walletAddress", accounts[0]);
+          } catch {}
         }
       } catch (error) {
         console.error("Error checking wallet connection:", error);
@@ -56,10 +60,16 @@ export default function WalletButton() {
 
   const handleAccountsChanged = (accounts) => {
     if (accounts.length > 0) {
-      setAccount(accounts[0]);
+      setWalletAddress(accounts[0]);
+      try {
+        localStorage.setItem("walletAddress", accounts[0]);
+      } catch {}
       toast.success("Wallet account changed");
     } else {
-      setAccount(null);
+      setWalletAddress(null);
+      try {
+        localStorage.removeItem("walletAddress");
+      } catch {}
       toast.info("Wallet disconnected");
     }
   };
@@ -77,7 +87,10 @@ export default function WalletButton() {
       });
 
       if (accounts.length > 0) {
-        setAccount(accounts[0]);
+        setWalletAddress(accounts[0]);
+        try {
+          localStorage.setItem("walletAddress", accounts[0]);
+        } catch {}
         toast.success("Wallet connected successfully! 🎉");
       }
     } catch (error) {
@@ -88,9 +101,9 @@ export default function WalletButton() {
     }
   };
 
-  const signOut = () => {
-    setAccount(null);
+  const localSignOut = () => {
     setIsDropdownOpen(false);
+    signOut();
     toast.info("Wallet disconnected");
   };
 
@@ -100,13 +113,13 @@ export default function WalletButton() {
       ref={dropdownRef}
       style={{ position: "relative" }}
     >
-      {account ? (
+      {walletAddress ? (
         <div className="relative">
           <button
             onClick={() => setIsDropdownOpen((prev) => !prev)}
             className="wallet-address-btn"
           >
-            {account.slice(0, 6)}...{account.slice(-4)}
+            {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
           </button>
           {isDropdownOpen && (
             <div
@@ -125,7 +138,6 @@ export default function WalletButton() {
                   padding: "8px",
                   borderRadius: "8px",
                   minWidth: 140,
-
                 }}
               >
                 <div
@@ -144,13 +156,10 @@ export default function WalletButton() {
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
                     }}
-                  >
-                  
-                  </div>
-                  
+                  ></div>
                 </div>
                 <button
-                  onClick={signOut}
+                  onClick={localSignOut}
                   style={{
                     width: "100%",
                     padding: "8px",

@@ -1,12 +1,14 @@
-.main-header {
-    position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    z-index: 50;
+.site-header {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  z-index: 50;
+  width: calc(100% - 40px);
+  justify-content: center;
 }
 
 .navbar {
@@ -17,7 +19,7 @@
   border-radius: 30px;
   color: white;
   display: flex;
-  justify-content:center;
+  justify-content: center;
   gap: 30px;
   background-color: black;
   align-items: center;
@@ -44,25 +46,30 @@
   position: absolute;
   inset: 0;
   border-radius: 30px;
-  padding: 2px; 
+  padding: 2px;
   background: linear-gradient(90deg, #4025bb, transparent, #2e22b4);
   background-size: 300% 300%;
   animation: borderGlow 5s linear infinite;
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
-    linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-          mask-composite: exclude;
+  mask-composite: exclude;
   pointer-events: none;
 }
 
 @keyframes borderGlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
-.connect-wallet-btn, .wallet-address-btn {
+.connect-wallet-btn,
+.wallet-address-btn {
   background-color: #8a2be2; /* A nice purple */
   color: white;
   padding: 8px 16px;
@@ -74,14 +81,14 @@
   transition: background-color 0.3s ease;
 }
 
-.connect-wallet-btn:hover, .wallet-address-btn:hover {
+.connect-wallet-btn:hover,
+.wallet-address-btn:hover {
   background-color: #9932cc; /* A darker purple */
 }
 
 .wallet-address-btn {
   background-color: #9932cc; /* A neutral gray for connected state */
 }
-
 
 .modal-overlay {
   position: fixed;
@@ -108,14 +115,14 @@
 }
 
 .modal-close-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: none;
-    border: none;
-    color: white;
-    font-size: 20px;
-    cursor: pointer;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
 }
 
 .modal-signout-btn {
