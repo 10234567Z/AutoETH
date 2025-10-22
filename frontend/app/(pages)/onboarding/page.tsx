@@ -21,7 +21,7 @@ const AVATAR_OPTIONS = Array.from(
   (_, i) => `https://api.dicebear.com/7.x/bottts/svg?seed=avatar-${i + 1}`
 );
 
-const CONTRACT_ADDRESS = "0x57b91375619a285f349efa85a390f06bc0ead4d6";
+const CONTRACT_ADDRESS = "0xc6f1afac969f024c16c35839f928844c89dd863a";
 const CONTRACT_ABI = [
   {
     inputs: [
@@ -175,16 +175,16 @@ const Onboarding = () => {
         const signer = await provider.getSigner();
         const signerAddress = await signer.getAddress();
 
-        // Switch to Sepolia if needed
+        // Switch to Base Sepolia if needed
         const network = await provider.getNetwork();
         const chainId =
           typeof network.chainId === "number"
             ? network.chainId
             : Number(network.chainId);
-        if (chainId !== 11155111) {
+        if (chainId !== 84532) {
           await anyWindow.ethereum.request({
             method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0xaa36a7" }], // Sepolia
+            params: [{ chainId: "0x14a34" }], // Base Sepolia (84532 in hex)
           });
         }
 
@@ -213,7 +213,7 @@ const Onboarding = () => {
         const tx = await contract.registerAgent(agentTuple);
         console.log("On-chain tx submitted:", tx.hash);
         await tx.wait();
-        console.log(`Tx confirmed! https://sepolia.etherscan.io/tx/${tx.hash}`);
+        console.log(`Tx confirmed! https://sepolia-explorer.base.org//tx/${tx.hash}`);
       } catch (chainErr: any) {
         console.error("On-chain registration error:", chainErr);
         setError(
