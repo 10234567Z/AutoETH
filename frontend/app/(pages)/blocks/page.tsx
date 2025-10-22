@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
+import Sidebar from "../../components/Sidebar";
+
 
 // --- Type Definitions ---
 interface OnchainBlock {
@@ -280,6 +282,8 @@ const BlocksPage = () => {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#1a1a2e] to-[#0A0B0F] py-20 px-4 text-white">
+      <Sidebar activePage="blocks" />
+
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-center mb-12">
           Blockchain Explorer

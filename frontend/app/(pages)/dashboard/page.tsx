@@ -26,10 +26,8 @@ const Dashboard = () => {
       <Sidebar activePage="dashboard" />
       <main className="main-content">
         <header className="main-header">
-          <h2 className="text-3xl font-bold">
-            {agent ? `Welcome, ${agent.name}` : "Welcome"}
-          </h2>
-          <p className="text-gray-400">Your agent's performance at a glance.</p>
+          <h2 className="text-3xl font-bold">AutoETH</h2>
+          <p className="text-gray-400">Welcome</p>
         </header>
 
         <div className="grid-container">
