@@ -176,42 +176,51 @@ const BlocksPage = () => {
       );
 
       console.log("Fetching blocks from contract:", CONTRACT_ADDRESS);
-      
+
       // Check network first
       const network = await provider.getNetwork();
-      const chainId = typeof network.chainId === 'number' ? network.chainId : Number(network.chainId);
+      const chainId =
+        typeof network.chainId === "number"
+          ? network.chainId
+          : Number(network.chainId);
       console.log("Current network:", chainId);
-      
+
       if (chainId !== 11155111) {
-        throw new Error(`Please switch to Sepolia network (current: ${chainId})`);
+        throw new Error(
+          `Please switch to Sepolia network (current: ${chainId})`
+        );
       }
 
       // Fetch latest blocks (10)
       const rawBlocks = await contract.getLatestBlocks(10);
       console.log("Raw blocks from chain:", rawBlocks);
-      
+
       const parsedBlocks: OnchainBlock[] = rawBlocks.map((b: any) => {
         // Handle both array and object responses
-        const block = Array.isArray(b) ? {
-          blockNumber: b[0],
-          timestamp: b[1],
-          minerAgent: b[2],
-          blockHash: b[3],
-          previousBlockHash: b[4],
-          targetPrice: b[5]
-        } : b;
+        const block = Array.isArray(b)
+          ? {
+              blockNumber: b[0],
+              timestamp: b[1],
+              minerAgent: b[2],
+              blockHash: b[3],
+              previousBlockHash: b[4],
+              targetPrice: b[5],
+            }
+          : b;
 
         return {
           blockNumber: Number(block.blockNumber || 0),
           timestamp: Number(block.timestamp || 0),
-          minerAgent: String(block.minerAgent || ''),
-          blockHash: typeof block.blockHash === 'string' 
-            ? block.blockHash 
-            : block.blockHash?.toString() || '',
-          previousBlockHash: typeof block.previousBlockHash === 'string'
-            ? block.previousBlockHash
-            : block.previousBlockHash?.toString() || '',
-          targetPrice: Number(block.targetPrice || 0)
+          minerAgent: String(block.minerAgent || ""),
+          blockHash:
+            typeof block.blockHash === "string"
+              ? block.blockHash
+              : block.blockHash?.toString() || "",
+          previousBlockHash:
+            typeof block.previousBlockHash === "string"
+              ? block.previousBlockHash
+              : block.previousBlockHash?.toString() || "",
+          targetPrice: Number(block.targetPrice || 0),
         };
       });
 
@@ -219,57 +228,48 @@ const BlocksPage = () => {
 
       setBlocks(parsedBlocks);
 
-      // Fetch mempool count
-      console.log("Fetching mempool count...");
-      let mempoolCount = 0;
+      // Fetch mempool count and transactions from contract
       try {
-        const cnt = await contract.getCurrentMempoolCount();
-        mempoolCount = Number(cnt || 0);
-        console.log("Current mempool count:", mempoolCount);
+        const mempoolCount = await contract.getCurrentMempoolCount();
+        const count = Number(mempoolCount);
+        let mempoolTxs: any[] = [];
+        if (count > 0) {
+          // getMempoolTransactions(startId, endId) is inclusive, so endId = count - 1
+          mempoolTxs = await contract.getMempoolTransactions(0, count - 1);
+        }
+        // Parse mempool transactions to match MempoolItem interface
+        const pools: MempoolSnapshot[] = [];
+        if (mempoolTxs && mempoolTxs.length > 0) {
+          mempoolTxs.forEach((tx: any, idx: number) => {
+            // txData may be nested, handle both array/object
+            let txHash = "";
+            if (tx.txData) {
+              if (typeof tx.txData.txHash === "string") {
+                txHash = tx.txData.txHash;
+              } else if (tx.txData.txHash) {
+                txHash = tx.txData.txHash.toString();
+              }
+            } else if (tx[0] && tx[0].txHash) {
+              txHash = tx[0].txHash.toString();
+            }
+            pools.push({
+              id: idx,
+              txs: [
+                {
+                  txHash,
+                  gasPrice: Number(tx.gasPrice ?? tx[1] ?? 0),
+                  blockNumber: Number(tx.blockNumber ?? tx[2] ?? 0),
+                  isValidated: Boolean(tx.isValidated ?? tx[3] ?? false),
+                },
+              ],
+            });
+          });
+        }
+        setMempools(pools);
       } catch (e) {
-        console.log("getCurrentMempoolCount not available, skipping mempool fetch");
-        mempoolCount = 0;
+        console.error("Error fetching mempool from contract", e);
+        setMempools([]);
       }
-
-      const pools: MempoolSnapshot[] = [];
-      if (mempoolCount > 0) {
-        console.log("Fetching mempool transactions from 0 to", mempoolCount - 1);
-        // Fetch full range
-        const rawPools = await contract.getMempoolTransactions(
-          0,
-          mempoolCount - 1
-        );
-        console.log("Raw mempool transactions:", rawPools);
-
-        rawPools.forEach((p: any, idx: number) => {
-          // Handle both array and object responses
-          const poolItem = Array.isArray(p) ? {
-            txData: p[0],
-            gasPrice: p[1],
-            blockNumber: p[2],
-            isValidated: p[3]
-          } : p;
-
-          // Handle both array and object responses for txData
-          const txData = poolItem.txData || {};
-          const txHash = Array.isArray(txData) 
-            ? String(txData[0] || '')
-            : typeof txData === 'object' && txData.txHash
-              ? String(txData.txHash)
-              : String(txData || '');
-
-          const item: MempoolItem = {
-            txHash: txHash,
-            gasPrice: Number(poolItem.gasPrice || 0),
-            blockNumber: Number(poolItem.blockNumber || 0),
-            isValidated: Boolean(poolItem.isValidated),
-          };
-          pools.push({ id: idx, txs: [item] });
-        });
-        console.log("Parsed mempool transactions:", pools);
-      }
-
-      setMempools(pools);
     } catch (e: any) {
       console.error("Error fetching on-chain data", e);
       setError(e?.message || String(e));
