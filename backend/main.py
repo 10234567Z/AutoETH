@@ -22,15 +22,15 @@ AGENTVERSE_BASE_URL = "https://agentverse.ai/v1"
 ASI_ONE_API_KEY  = os.getenv("ASIONE_API_KEY")
 
 # Smart Contract Configuration
-SEPOLIA_RPC = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
-CONTRACT_ADDRESS = "0x57b91375619a285f349efa85a390f06bc0ead4d6"
-POI_TOKEN_ADDRESS = "0x434245be25424cfd0e6afa0f07470602dfeb349e"
-SEPOLIA_PRIVATE_KEY = os.getenv("SEPOLIA_PRIVATE_KEY", "0x5c86c08228cbd7f2e7890e8bfe1288ff7f90f64404fa9801f5f80320e44a0e6c")
+SEPOLIA_RPC = "https://base-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
+CONTRACT_ADDRESS = "0x80b369c7799ef6babf231f44042d93d3196a4f60"
+POI_TOKEN_ADDRESS = "0xbc63b982708e2c0dbfcc3cfa944f29b18ee977f2"
+SEPOLIA_PRIVATE_KEY = os.getenv("SEPOLIA_PRIVATE_KEY")
 
 # Gas tracking configuration
 GAS_TRACKING_FILE = Path("gas_tracking.json")
 INITIAL_STAKE_AMOUNT = 0.1  # ETH
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:3002")  # Set to ngrok URL in production
+BACKEND_URL = os.getenv("BACKEND_URL")  # Set to ngrok URL in production
 
 # Initialize Web3
 w3 = Web3(Web3.HTTPProvider(SEPOLIA_RPC))
@@ -176,9 +176,9 @@ client = OpenAI(
 )
 
 # Smart Contract Configuration (for agent template)
-SEPOLIA_RPC_TEMPLATE = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
-CONTRACT_ADDRESS_TEMPLATE = "0x57b91375619a285f349efa85a390f06bc0ead4d6"
-POI_TOKEN_ADDRESS_TEMPLATE = "0x434245be25424cfd0e6afa0f07470602dfeb349e"
+SEPOLIA_RPC_TEMPLATE = "https://base-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
+CONTRACT_ADDRESS_TEMPLATE = "0x80b369c7799ef6babf231f44042d93d3196a4f60"
+POI_TOKEN_ADDRESS_TEMPLATE = "0xbc63b982708e2c0dbfcc3cfa944f29b18ee977f2"
 PRIVATE_KEY = {repr(SEPOLIA_PRIVATE_KEY)}
 
 # Initialize Web3
@@ -388,7 +388,7 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
             'nonce': nonce,
             'gas': 500000,
             'gasPrice': gas_price,
-            'chainId': 11155111  # Sepolia
+            'chainId': 84532  # Sepolia
         }})
         
         ctx.logger.info("Signing transaction...")

@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import { createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { sepolia } from "viem/chains";
+import { baseSepolia } from "viem/chains";
 
 async function main() {
   console.log("🚀 Deploying to Sepolia Testnet...\n");
@@ -19,16 +19,16 @@ async function main() {
   const account = privateKeyToAccount(`0x${privateKey.replace('0x', '')}`);
   
   // Use Alchemy for reliable Sepolia RPC
-  const ALCHEMY_RPC = "https://eth-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ";
+  const ALCHEMY_RPC = "https://base-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ";
   
   const publicClient = createPublicClient({
-    chain: sepolia,
+    chain: baseSepolia,
     transport: http(ALCHEMY_RPC),
   });
 
   const walletClient = createWalletClient({
     account,
-    chain: sepolia,
+    chain: baseSepolia,
     transport: http(ALCHEMY_RPC),
   });
 
@@ -53,8 +53,6 @@ async function main() {
 
   console.log("✅ POIToken deployed!");
   console.log("📍 POIToken Address:", poiTokenReceipt.contractAddress);
-  console.log("🔗 Etherscan:", `https://sepolia.etherscan.io/address/${poiTokenReceipt.contractAddress}`);
-  console.log("🔗 Transaction:", `https://sepolia.etherscan.io/tx/${poiTokenHash}\n`);
 
   // Step 2: Deploy ProofOfIntelligence with POIToken address
   console.log("📤 Deploying ProofOfIntelligence...");
@@ -72,8 +70,6 @@ async function main() {
 
   console.log("✅ ProofOfIntelligence deployed!");
   console.log("📍 Contract Address:", receipt.contractAddress);
-  console.log("🔗 Etherscan:", `https://sepolia.etherscan.io/address/${receipt.contractAddress}`);
-  console.log("🔗 Transaction:", `https://sepolia.etherscan.io/tx/${proofOfIntelligenceHash}\n`);
   
   // Step 3: Set ProofOfIntelligence contract in POIToken
   console.log("🔗 Linking contracts...");
