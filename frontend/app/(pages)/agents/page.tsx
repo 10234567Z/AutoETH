@@ -394,7 +394,7 @@ const AgentsPage = () => {
             // After switch, trigger a refresh
             await fetchAgentsByWallet(addr);
           }
-        } catch (netErr) {
+        } catch (netErr: any) {
           console.warn("Network check failed:", netErr);
           if (netErr?.code === 4902) {
             // Chain not added
