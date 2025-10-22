@@ -21,7 +21,8 @@ const AVATAR_OPTIONS = Array.from(
   (_, i) => `https://api.dicebear.com/7.x/bottts/svg?seed=avatar-${i + 1}`
 );
 
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "error";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "error";
+console.log("Using contract address:", CONTRACT_ADDRESS);
 const CONTRACT_ABI = [
   {
     inputs: [
@@ -139,11 +140,20 @@ const Onboarding = () => {
       });
 
       if (!response.ok) {
-        const msg = await response.text();
-        throw new Error(msg || "Backend registration failed");
+        let errorMsg = "Backend registration failed";
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorData.message || errorMsg;
+        } catch {
+          const textError = await response.text();
+          errorMsg = textError || errorMsg;
+        }
+        console.error("Backend error:", errorMsg);
+        throw new Error(errorMsg);
       }
 
       const responseData = await response.json();
+      console.log("Backend response:", responseData);
       const agentverseAddress = responseData.agent_address;
 
       if (!agentverseAddress) {
@@ -171,26 +181,39 @@ const Onboarding = () => {
           throw new Error("Unsupported ethers version");
         }
 
-        await provider.send("eth_requestAccounts", []);
-        const signer = await provider.getSigner();
-        const signerAddress = await signer.getAddress();
-
-        // Switch to Base Sepolia if needed
+        // Check network first, switch if needed
         const network = await provider.getNetwork();
         const chainId =
           typeof network.chainId === "number"
             ? network.chainId
             : Number(network.chainId);
+        
         if (chainId !== 84532) {
+          console.log("Switching to Base Sepolia...");
           await anyWindow.ethereum.request({
             method: "wallet_switchEthereumChain",
             params: [{ chainId: "0x14a34" }], // Base Sepolia (84532 in hex)
           });
+          
+          // Recreate provider after network switch
+          if (ethersAny.BrowserProvider) {
+            provider = new ethersAny.BrowserProvider(anyWindow.ethereum);
+          } else if (ethersAny.providers?.Web3Provider) {
+            provider = new ethersAny.providers.Web3Provider(anyWindow.ethereum);
+          }
         }
+
+        // Get accounts directly without using getSigner() to avoid ENS
+        await provider.send("eth_requestAccounts", []);
+        const accounts = await provider.send("eth_accounts", []);
+        const signerAddress = accounts[0];
 
         if (signerAddress.toLowerCase() !== walletAddress.toLowerCase()) {
           throw new Error("Connected wallet mismatch. Please reconnect.");
         }
+
+        // Create signer without ENS resolution
+        const signer = await provider.getSigner(signerAddress);
 
         const contract = new ethers.Contract(
           CONTRACT_ADDRESS,
@@ -213,7 +236,7 @@ const Onboarding = () => {
         const tx = await contract.registerAgent(agentTuple);
         console.log("On-chain tx submitted:", tx.hash);
         await tx.wait();
-        console.log(`Tx confirmed! https://sepolia-explorer.base.org//tx/${tx.hash}`);
+        console.log(`Tx confirmed! https://base-sepolia.blockscout.com/tx/${tx.hash}`);
       } catch (chainErr: any) {
         console.error("On-chain registration error:", chainErr);
         setError(

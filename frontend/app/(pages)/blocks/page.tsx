@@ -26,7 +26,7 @@ interface MempoolSnapshot {
   txs: MempoolItem[];
 }
 
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "error";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "error";
 const CONTRACT_ABI = [
   {
     inputs: [{ internalType: "uint256", name: "count", type: "uint256" }],
