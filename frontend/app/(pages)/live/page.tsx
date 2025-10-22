@@ -1,4 +1,7 @@
 "use client";
+import Header from "@/app/components/Header";
+import { WalletProvider } from "@/app/context/WalletContext";
+
 import React, { useEffect, useState } from "react";
 
 
@@ -41,17 +44,19 @@ function usePythFeed() {
 
     evtSource.onmessage = (event) => {
       try {
-        const updates = JSON.parse(event.data);
-        if (!Array.isArray(updates)) return;
+        // 1. The stream sends a single object, not an array
+        const update = JSON.parse(event.data);
 
-        const prices = {
-          ETH: { ...data.ETH },
-          BTC: { ...data.BTC },
-        };
+        // 2. Use the functional update form to avoid stale state
+        setData((prevData) => {
+          // Create a copy of the previous state
+          const prices = {
+            ETH: { ...prevData.ETH },
+            BTC: { ...prevData.BTC },
+          };
 
-        for (const update of updates) {
           const symbol = PYTH_SYMBOLS[update.id];
-          if (!symbol) continue;
+          if (!symbol) return prevData; // Return old state if symbol is unknown
 
           const basePrice = update.price.price;
           const expo = update.price.expo;
@@ -60,8 +65,10 @@ function usePythFeed() {
             ? new Date(update.price.publish_time * 1000).toLocaleTimeString()
             : "-";
 
+          // 3. Get the *actual* previous price from prevData
           const prevPrice =
-            symbol === "ETH/USD" ? data.ETH.price : data.BTC.price;
+            symbol === "ETH/USD" ? prevData.ETH.price : prevData.BTC.price;
+
           const change =
             prevPrice > 0
               ? (((price - prevPrice) / prevPrice) * 100).toFixed(2) + "%"
@@ -73,9 +80,10 @@ function usePythFeed() {
           if (symbol === "BTC/USD") {
             prices.BTC = { price, updated, change };
           }
-        }
 
-        setData(prices);
+          // Return the new state
+          return prices;
+        });
       } catch (e) {
         console.error("Error processing price update:", e);
       }
@@ -89,7 +97,7 @@ function usePythFeed() {
     return () => {
       evtSource.close();
     };
-  }, []);
+  }, []); // The empty array is correct, as we're using functional updates
 
   return data;
 }
@@ -304,6 +312,10 @@ const Live = () => {
 
   return (
     <main className="min-h-screen bg-[#0A0B0F] py-20 px-4 flex flex-col items-center">
+       <WalletProvider>
+<Header />
+
+        </WalletProvider>
       <h1 className="text-4xl md:text-5xl font-bold text-purple-400 mb-4 mt-10 text-center">
         Live Oracle Feed
       </h1>

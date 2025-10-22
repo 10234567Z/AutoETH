@@ -21,7 +21,7 @@ const AVATAR_OPTIONS = Array.from(
   (_, i) => `https://api.dicebear.com/7.x/bottts/svg?seed=avatar-${i + 1}`
 );
 
-const CONTRACT_ADDRESS = "0xc6f1afac969f024c16c35839f928844c89dd863a";
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "error";
 const CONTRACT_ABI = [
   {
     inputs: [

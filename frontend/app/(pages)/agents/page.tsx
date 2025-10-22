@@ -15,7 +15,7 @@ interface Agent {
 }
 
 // Minimal contract info (read-only)
-const CONTRACT_ADDRESS = "0x57b91375619a285f349efa85a390f06bc0ead4d6";
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "error";
 const CONTRACT_ABI = [
   {
     inputs: [],

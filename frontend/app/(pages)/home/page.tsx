@@ -4,6 +4,8 @@ import Features from "../../components/features";
 import Footer from "../../components/footer";
 import Smplifies from "../../components/simplifies";
 import Image from "next/image";
+import Header from "@/app/components/Header";
+import { WalletProvider } from "@/app/context/WalletContext";
 
 const steps = [
   {
@@ -94,6 +96,10 @@ const InfoIntro = () => (
 
 const Home = () => (
   <main className="bg-[#0A0B0F] min-h-screen flex flex-col">
+    <WalletProvider>
+<Header />
+
+        </WalletProvider>
     <Hero />
     <InfoIntro />
     <Features />
