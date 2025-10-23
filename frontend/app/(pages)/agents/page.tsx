@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import Sidebar from "../../components/Sidebar";
 
 interface Agent {
-  id: string; // agent address (string id from contract)
+  id: string;
   name: string;
   avatar: string;
   description: string;
@@ -19,10 +19,11 @@ interface Agent {
   };
 }
 
-// Minimal contract info (read-only)
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "error";
+
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+  "0x6b4376c102bdd8254dfcd01e6347a9e30d52400a";
+
 const CONTRACT_ABI = [
-  // --- This is the function you already had ---
   {
     inputs: [
       { internalType: "address", name: "walletAddress", type: "address" },
@@ -51,7 +52,6 @@ const CONTRACT_ABI = [
     stateMutability: "view",
     type: "function",
   },
-  // --- This is the function you already had ---
   {
     inputs: [
       { internalType: "address", name: "walletAddress", type: "address" },
@@ -61,7 +61,6 @@ const CONTRACT_ABI = [
     stateMutability: "view",
     type: "function",
   },
-  // --- !! THIS IS THE MISSING FUNCTION !! ---
   {
     inputs: [{ internalType: "string", name: "agentAddress", type: "string" }],
     name: "getAgentStats",
@@ -78,49 +77,84 @@ const CONTRACT_ABI = [
   },
 ];
 
-
+// ---------- FULL-WIDTH AGENT CARD ----------
 const AgentCard = ({
   agent,
   onDelete,
 }: {
   agent: Agent;
   onDelete: (id: string) => void;
-}) => (
-  <div className="bg-black/40 border border-white/10 rounded-2xl p-6 shadow-lg hover:shadow-purple-500/20 transition-all duration-300 flex flex-col justify-between">
-    <div>
-      <div className="flex items-center gap-4 mb-4">
-        <img
-          src={agent.avatar}
-          alt={agent.name}
-          className="w-16 h-16 rounded-full border-2 border-purple-500"
-        />
-        <div>
-          <h3 className="text-xl font-bold text-white">{agent.name}</h3>
-          <p className="text-sm text-gray-400">{agent.description}</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-4 text-center text-sm mb-4">
-        <div>
-          <div className="font-bold text-purple-400">Reputation</div>
-          <div className="text-white">{agent.reputation}</div>
-        </div>
-        <div>
-          <div className="font-bold text-green-400">Accuracy</div>
-          <div className="text-white">{agent.accuracy}</div>
-        </div>
-        <div>
-          <div className="font-bold text-yellow-400">Wins</div>
-          <div className="text-white">{agent.wins}</div>
-        </div>
-      </div>
-    </div>
-    <div className="flex justify-end gap-2 mt-4">
-      
-      
-    </div>
-  </div>
-);
+}) => {
+  const pending = Number(agent.stats.pendingRewards || 0);
+  const showPending = pending > 0;
+  const showBias = Number(agent.stats.bias || 0) !== 0;
 
+  return (
+    <div className="w-full bg-gradient-to-r from-[#101522]/90 to-[#0c101c]/90 border border-white/10 rounded-2xl p-6 mb-6 shadow-lg hover:shadow-purple-600/30 transition-all duration-300 backdrop-blur-md">
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+        <div className="flex-shrink-0">
+          <img
+            src={agent.avatar}
+            alt={agent.name}
+            className="w-24 h-24 rounded-2xl border-2 border-purple-600/30 shadow-inner"
+          />
+        </div>
+
+        <div className="flex-1 w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">
+                {agent.name}
+              </h2>
+              <p className="text-sm text-gray-400 mt-1">
+                {agent.description || "No description available"}
+              </p>
+            </div>
+            <div className="mt-3 sm:mt-0 text-right">
+              <span className="text-xs text-gray-400 block">Reputation</span>
+              <span className="font-mono text-xl font-bold text-purple-400">
+                {agent.reputation}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3 text-sm">
+            <div className="bg-purple-600/10 border border-purple-500/20 text-purple-300 px-3 py-1.5 rounded-full">
+              🎯 Accuracy:{" "}
+              <span className="font-semibold">{agent.accuracy}</span>
+            </div>
+            <div className="bg-green-600/10 border border-green-500/20 text-green-300 px-3 py-1.5 rounded-full">
+              🏆 Wins: <span className="font-semibold">{agent.wins}</span>
+            </div>
+            <div className="bg-blue-600/10 border border-blue-500/20 text-blue-300 px-3 py-1.5 rounded-full">
+              📈 Predictions:{" "}
+              <span className="font-semibold">
+                {agent.stats.totalPredictions}
+              </span>
+            </div>
+            {showPending && (
+              <div className="bg-yellow-600/10 border border-yellow-500/20 text-yellow-300 px-3 py-1.5 rounded-full">
+                ⛳ Pending:{" "}
+                <span className="font-semibold">{pending.toFixed(2)} POI</span>
+              </div>
+            )}
+            {showBias && (
+              <div className="bg-indigo-600/10 border border-indigo-500/20 text-indigo-300 px-3 py-1.5 rounded-full">
+                ↔ Bias:{" "}
+                <span className="font-semibold">
+                  {agent.stats.bias > 0 ? "+" : ""}
+                  {agent.stats.bias}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ---------- MODERN ADD AGENT MODAL ----------
 const AddAgentModal = ({
   onAdd,
   onClose,
@@ -154,11 +188,11 @@ const AddAgentModal = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
+      className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center"
       onClick={onClose}
     >
       <div
-        className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-8 shadow-2xl w-full max-w-md"
+        className="bg-gradient-to-b from-[#1b1c2e] to-[#10111f] border border-white/10 rounded-2xl p-8 shadow-2xl w-full max-w-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-2xl font-bold text-white mb-6">Add New Agent</h2>
@@ -176,7 +210,7 @@ const AddAgentModal = ({
             onChange={(e) => setDescription(e.target.value)}
             className="w-full bg-[#0b0c0f] border border-white/10 rounded-md px-4 py-3 text-white outline-none focus:border-purple-500"
             rows={3}
-          ></textarea>
+          />
         </div>
         <div className="flex justify-end gap-4 mt-6">
           <button
@@ -197,6 +231,38 @@ const AddAgentModal = ({
   );
 };
 
+// ---------- BASE SEPOLIA NETWORK HELPERS ----------
+const ensureBaseSepoliaNetwork = async (anyWindow: any) => {
+  const BASE_SEPOLIA_CHAIN_ID = "0x14a34"; // 84532
+
+  const chainId = await anyWindow.ethereum.request({ method: "eth_chainId" });
+  if (chainId !== BASE_SEPOLIA_CHAIN_ID) {
+    try {
+      await anyWindow.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: BASE_SEPOLIA_CHAIN_ID }],
+      });
+      console.log("✅ Switched to Base Sepolia");
+    } catch (switchErr: any) {
+      if (switchErr.code === 4902) {
+        await anyWindow.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: BASE_SEPOLIA_CHAIN_ID,
+              chainName: "Base Sepolia",
+              nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://sepolia.base.org"],
+              blockExplorerUrls: ["https://sepolia.basescan.org"],
+            },
+          ],
+        });
+      } else throw switchErr;
+    }
+  }
+};
+
+// ---------- MAIN PAGE ----------
 const AgentsPage = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -210,21 +276,22 @@ const AgentsPage = () => {
     if (anyWindow.ethereum) {
       anyWindow.ethereum
         .request({ method: "eth_accounts" })
-        .then((accounts: string[]) => {
+        .then(async (accounts: string[]) => {
           if (accounts && accounts.length > 0) {
             setWalletConnected(true);
             setWalletAddress(accounts[0]);
+            await ensureBaseSepoliaNetwork(anyWindow);
             fetchAgentsByWallet(accounts[0]);
           }
         })
-        .catch((e: any) => console.error(e));
+        .catch(console.error);
     }
   }, []);
 
   const connectWallet = async () => {
     const anyWindow: any = window;
     if (!anyWindow.ethereum) {
-      alert("No Ethereum provider found. Install MetaMask.");
+      alert("No Ethereum wallet found. Install MetaMask or Coinbase Wallet.");
       return;
     }
     try {
@@ -234,11 +301,12 @@ const AgentsPage = () => {
       if (accounts && accounts.length > 0) {
         setWalletConnected(true);
         setWalletAddress(accounts[0]);
-        fetchAgentsByWallet(accounts[0]);
+        await ensureBaseSepoliaNetwork(anyWindow);
+        await fetchAgentsByWallet(accounts[0]);
       }
-    } catch (e: any) {
-      console.error(e);
-      setError("Failed to connect wallet");
+    } catch (err: any) {
+      console.error("Wallet connection failed:", err);
+      setError("Failed to connect wallet.");
     }
   };
 
@@ -248,39 +316,35 @@ const AgentsPage = () => {
     try {
       const anyWindow: any = window;
       let provider;
-      const ethersAny: any = ethers;
 
       if (anyWindow.ethereum) {
-        if (ethersAny.BrowserProvider) {
-          provider = new ethersAny.BrowserProvider(anyWindow.ethereum);
-        } else if (ethersAny.providers?.Web3Provider) {
-          provider = new ethersAny.providers.Web3Provider(anyWindow.ethereum);
+        await ensureBaseSepoliaNetwork(anyWindow);
+        if ((ethers as any).BrowserProvider) {
+          provider = new (ethers as any).BrowserProvider(anyWindow.ethereum);
+        } else {
+          provider = new (ethers as any).providers.Web3Provider(
+            anyWindow.ethereum
+          );
         }
+      } else {
+        setError("No wallet found.");
+        return;
       }
 
-      if (!provider) {
-        provider =
-          ethersAny.getDefaultProvider?.() || ethers.getDefaultProvider();
-      }
-
-      const contract = new ethersAny.Contract(
+      const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         CONTRACT_ABI,
         provider
       );
-
       console.log("Fetching agents for wallet:", addr);
 
-      // Get all agents registered to this wallet
       const agentDetails = await contract.getAgentDetailsByWallet(addr);
       console.log("Agent details:", agentDetails);
 
       const results: Agent[] = await Promise.all(
         agentDetails.map(async (agent: any) => {
-          // Get additional stats for each agent
           const stats = await contract.getAgentStats(agent.agentAddress);
 
-          // Calculate actual accuracy from stats
           const accuracyPct =
             agent.totalGuesses > 0
               ? `${((agent.bestGuesses * 100) / agent.totalGuesses).toFixed(
@@ -288,10 +352,7 @@ const AgentsPage = () => {
                 )}%`
               : "0%";
 
-          // Format pending rewards in ETH
-          const pendingRewards = ethersAny.formatEther(
-            stats.pendingReward || "0"
-          );
+          const pendingRewards = ethers.formatEther(stats.pendingReward || "0");
 
           return {
             id: agent.agentAddress,
@@ -299,19 +360,15 @@ const AgentsPage = () => {
             avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
               agent.agentAddress
             )}`,
-            description: `${
-              stats.totalGuesses
-            } predictions made with ${accuracyPct} accuracy.\nBias: ${
-              stats.bias > 0 ? "+" : ""
-            }${stats.bias} | Pending Rewards: ${pendingRewards} POI`,
-            reputation: Number(agent.totalGuesses), // Use actual total guesses as reputation
+            description: `${Number(agent.totalGuesses)} preds • ${accuracyPct}`,
+            reputation: Number(agent.totalGuesses),
             accuracy: accuracyPct,
             wins: Number(agent.bestGuesses),
             stats: {
               pendingRewards,
-              bias: stats.bias,
-              lastActive: agent.lastGuessBlock,
-              totalPredictions: agent.totalGuesses,
+              bias: Number(stats.bias || 0),
+              lastActive: Number(agent.lastGuessBlock || 0),
+              totalPredictions: Number(agent.totalGuesses || 0),
             },
           };
         })
@@ -320,87 +377,21 @@ const AgentsPage = () => {
       setAgents(results);
     } catch (e: any) {
       console.error("Error fetching agents:", e);
-      const errMsg = e?.reason || e?.message || String(e);
-      console.error("Error details:", e);
-      setError(errMsg);
-
-      // If no agents found, this could be a provider/network issue
-      const anyWindow: any = window;
-      if (agents.length === 0 && anyWindow.ethereum) {
-        try {
-          // Create a fresh provider just for network check
-          const ethersAny: any = ethers;
-          const checkProvider = ethersAny.BrowserProvider
-            ? new ethersAny.BrowserProvider(anyWindow.ethereum)
-            : new ethersAny.providers.Web3Provider(anyWindow.ethereum);
-
-          const network = await checkProvider.getNetwork();
-          console.log("Current network:", network);
-          const chainId =
-            typeof network.chainId === "number"
-              ? network.chainId
-              : Number(network.chainId);
-          if (chainId !== 84532) {
-            setError(
-              `Please switch to Sepolia network. Current network ID: ${chainId}`
-            );
-            // Try to switch network
-            await anyWindow.ethereum.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: "0xaa36a7" }], // Sepolia
-            });
-            // After switch, trigger a refresh
-            await fetchAgentsByWallet(addr);
-          }
-        } catch (netErr: any) {
-          console.warn("Network check failed:", netErr);
-          if (netErr?.code === 4902) {
-            // Chain not added
-            try {
-              await anyWindow.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [
-                  {
-                    chainId: "0xaa36a7",
-                    chainName: "Sepolia",
-                    nativeCurrency: {
-                      name: "ETH",
-                      symbol: "ETH",
-                      decimals: 18,
-                    },
-                    rpcUrls: ["https://eth-sepolia.g.alchemy.com/v2/demo"],
-                    blockExplorerUrls: ["https://sepolia.etherscan.io/"],
-                  },
-                ],
-              });
-              // After adding, trigger a refresh
-              await fetchAgentsByWallet(addr);
-            } catch (addErr) {
-              console.error("Failed to add Sepolia:", addErr);
-            }
-          }
-        }
-      }
+      setError(e?.reason || e?.message || String(e));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddAgent = (newAgent: Agent) => {
-    setAgents((prev) => [newAgent, ...prev]);
-  };
-
-  const handleDeleteAgent = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this agent?")) {
-      setAgents((prev) => prev.filter((agent) => agent.id !== id));
-    }
-  };
+  const handleAddAgent = (newAgent: Agent) =>
+    setAgents((p) => [newAgent, ...p]);
+  const handleDeleteAgent = (id: string) =>
+    setAgents((p) => p.filter((a) => a.id !== id));
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#1a1a2e] to-[#0A0B0F] py-20 px-4 text-white">
+    <main className="min-h-screen bg-gradient-to-b from-[#141827] via-[#0f1220] to-[#0a0b12] py-20 px-6 text-white">
       <Sidebar activePage="agents" />
-
-      <div className="max-w-7xl mx-auto ml-20">
+      <div className="max-w-6xl mx-auto ml-20">
         <div className="flex justify-between items-center mb-12">
           <h1 className="text-4xl font-bold">Manage Agents</h1>
           <div className="flex items-center gap-4">
@@ -412,7 +403,8 @@ const AgentsPage = () => {
                 Connect Wallet
               </button>
             ) : (
-              <div className="text-sm text-gray-300">
+              <div className="text-sm text-gray-300 font-mono truncate max-w-xs">
+                {walletAddress}
               </div>
             )}
             <button
@@ -437,14 +429,12 @@ const AgentsPage = () => {
           </div>
         </div>
 
-        {loading && (
-          <div className="text-gray-400 mb-4">Loading agents on-chain...</div>
-        )}
+        {loading && <div className="text-gray-400 mb-4">Loading agents…</div>}
         {error && <div className="text-red-400 mb-4">{error}</div>}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="space-y-4">
           {agents.length === 0 && !loading ? (
-            <div className="text-gray-400">
+            <div className="text-gray-400 text-center py-10">
               No on-chain agents found for this wallet.
             </div>
           ) : (

@@ -1,0 +1,107 @@
+.agents-page-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #111827;
+  color: #d1d5db;
+}
+
+.agents-content {
+  flex: 1;
+  padding: 2rem;
+  margin-left: 80px; /* Adjust based on sidebar width */
+  transition: margin-left 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.agents-header {
+  margin-bottom: 2rem;
+}
+
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+}
+
+.agent-card {
+  background-color: #1f2937;
+  border-radius: 0.75rem;
+  border: 1px solid #374151;
+  overflow: hidden;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.agent-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.1), 0 4px 6px -2px rgba(139, 92, 246, 0.05);
+}
+
+.agent-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background-color: #374151;
+}
+
+.agent-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid #8b5cf6;
+}
+
+.agent-info {
+  flex: 1;
+}
+
+.agent-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.agent-id {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.agent-card-body {
+  padding: 1.5rem;
+}
+
+.agent-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin-bottom: 0.25rem;
+}
+
+.stat-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.agent-chart {
+  margin-top: 1.5rem;
+}
+
+.loading-indicator,
+.error-message {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.125rem;
+}
+
+.error-message {
+  color: #f87171;
+}
