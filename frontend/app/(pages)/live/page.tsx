@@ -4,8 +4,6 @@ import { WalletProvider } from "@/app/context/WalletContext";
 
 import React, { useEffect, useState } from "react";
 
-
-
 const HERMES_URL = "https://hermes.pyth.network";
 
 const PRICE_IDS = [
@@ -36,84 +34,118 @@ function usePythFeed() {
     BTC: { price: 0, updated: "-", change: "0%" },
   });
 
-  useEffect(() => {
-    const evtSource = new EventSource(
-      `${HERMES_URL}/v2/updates/price/stream?` +
-        `ids[]=${PRICE_IDS[0]}&ids[]=${PRICE_IDS[1]}`
-    );
+  const fetchPrices = async () => {
+    try {
+      const response = await fetch(
+        `${HERMES_URL}/api/latest_price_feeds?ids[]=${PRICE_IDS[0]}&ids[]=${PRICE_IDS[1]}`
+      );
 
-    evtSource.onopen = () => {
-      console.log("[PythFeed] Connection OPEN");
-    };
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    evtSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+      const result = await response.json();
+      console.log("[PythFeed] Real API response:", result);
 
-        if (!data.parsed || !Array.isArray(data.parsed)) {
-          return;
+      if (!Array.isArray(result) || result.length === 0) {
+        console.warn("[PythFeed] Invalid response format");
+        return;
+      }
+
+      setData((prevData) => {
+        const newPrices = {
+          ETH: { ...prevData.ETH },
+          BTC: { ...prevData.BTC },
+        };
+
+        for (let i = 0; i < result.length; i++) {
+          const feed = result[i];
+          console.log("[PythFeed] Processing feed:", feed);
+          console.log("[PythFeed] Feed ID:", feed.id);
+          console.log("[PythFeed] Feed price object:", feed.price);
+
+          // Parse the price data from the API response
+          const priceData = feed.price;
+          if (!priceData) {
+            console.warn("[PythFeed] No price data found in feed");
+            continue;
+          }
+
+          const basePrice = Number(priceData.price);
+          const expo = Number(priceData.expo);
+          const calculatedPrice = basePrice * Math.pow(10, expo);
+
+          console.log("[PythFeed] Price calculation:", {
+            basePrice,
+            expo,
+            calculatedPrice,
+          });
+
+          if (isNaN(calculatedPrice) || calculatedPrice <= 0) {
+            console.error(
+              "[PythFeed] Invalid price calculation:",
+              calculatedPrice
+            );
+            continue;
+          }
+
+          // Determine symbol based on price range
+          // ETH is typically $1,000-$10,000
+          // BTC is typically $20,000-$100,000
+          let symbol: string;
+          let currency: "ETH" | "BTC";
+
+          if (calculatedPrice >= 10000) {
+            // Higher price = BTC
+            symbol = "BTC/USD";
+            currency = "BTC";
+          } else {
+            // Lower price = ETH
+            symbol = "ETH/USD";
+            currency = "ETH";
+          }
+
+          console.log(
+            "[PythFeed] Determined currency:",
+            currency,
+            "for price:",
+            calculatedPrice
+          );
+
+          const updated = priceData.publish_time
+            ? new Date(priceData.publish_time * 1000).toLocaleTimeString()
+            : new Date().toLocaleTimeString();
+
+          const prevPrice = prevData[currency].price;
+          const change =
+            prevPrice > 0
+              ? (((calculatedPrice - prevPrice) / prevPrice) * 100).toFixed(2) +
+                "%"
+              : "0%";
+
+          newPrices[currency] = { price: calculatedPrice, updated, change };
+          console.log(`[PythFeed] Updated ${currency} price:`, calculatedPrice);
         }
 
-        setData((prevData) => {
-          const newPrices = {
-            ETH: { ...prevData.ETH },
-            BTC: { ...prevData.BTC },
-          };
+        console.log("[PythFeed] Final new prices:", newPrices);
+        return newPrices;
+      });
+    } catch (error) {
+      console.error("[PythFeed] Error fetching prices:", error);
+    }
+  };
 
-          for (const update of data.parsed) {
-            const symbol = PYTH_SYMBOLS[update.id];
-            if (!symbol) continue;
+  useEffect(() => {
+    // Initial fetch
+    fetchPrices();
 
-            // --- START FIX ---
-            // Explicitly convert all parts of the calculation to Number
-            const basePrice = Number(update.price.price);
-            const expo = Number(update.price.expo);
-            const price = basePrice * Math.pow(10, expo);
-            // --- END FIX ---
-
-            // Check if calculation failed (NaN)
-            if (isNaN(price)) {
-              console.error(
-                "[PythFeed] Price calculation resulted in NaN!",
-                update
-              );
-              continue; // Skip this update
-            }
-
-            const updated = update.price.publish_time
-              ? new Date(update.price.publish_time * 1000).toLocaleTimeString()
-              : "-";
-
-            const prevPrice =
-              symbol === "ETH/USD" ? prevData.ETH.price : prevData.BTC.price;
-
-            const change =
-              prevPrice > 0
-                ? (((price - prevPrice) / prevPrice) * 100).toFixed(2) + "%"
-                : "0%";
-
-            if (symbol === "ETH/USD") {
-              newPrices.ETH = { price, updated, change };
-            }
-            if (symbol === "BTC/USD") {
-              newPrices.BTC = { price, updated, change };
-            }
-          }
-          return newPrices;
-        });
-      } catch (e) {
-        console.error("Error processing price update:", e);
-      }
-    };
-
-    evtSource.onerror = (error) => {
-      console.error("[PythFeed] EventSource ERROR:", error);
-      evtSource.close();
-    };
+    // Set up polling every 5 seconds
+    const interval = setInterval(() => {
+      fetchPrices();
+    }, 5000);
 
     return () => {
-      console.log("[PythFeed] Closing connection.");
-      evtSource.close();
+      clearInterval(interval);
     };
   }, []);
 
@@ -197,12 +229,7 @@ const FeedCard = ({
     >
       {change}
     </div>
-    {prediction && (
-      <div className="mt-4 text-sm text-gray-300">
-        <span className="font-semibold text-purple-400">AI Prediction:</span>{" "}
-        {prediction}
-      </div>
-    )}
+    
     <div className="flex justify-between w-full text-sm text-gray-300 mt-6">
       <div>
         <div className="font-bold">Source</div>
@@ -330,10 +357,9 @@ const Live = () => {
 
   return (
     <main className="min-h-screen bg-[#0A0B0F] py-20 px-4 flex flex-col items-center">
-       <WalletProvider>
-<Header />
-
-        </WalletProvider>
+      <WalletProvider>
+        <Header />
+      </WalletProvider>
       <h1 className="text-4xl md:text-5xl font-bold text-purple-400 mb-4 mt-10 text-center">
         Live Oracle Feed
       </h1>
