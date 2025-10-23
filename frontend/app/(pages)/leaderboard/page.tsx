@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import Header from "@/app/components/Header";
 import { WalletProvider } from "@/app/context/WalletContext";
@@ -19,19 +19,12 @@ const CONTRACT_ABI = [
     inputs: [{ internalType: "string", name: "agentAddress", type: "string" }],
     name: "getAgentStats",
     outputs: [
-      {
-        components: [
-          { internalType: "uint256", name: "totalGuesses", type: "uint256" },
-          { internalType: "uint256", name: "bestGuesses", type: "uint256" },
-          { internalType: "uint256", name: "accuracy", type: "uint256" },
-          { internalType: "uint256", name: "lastGuessBlock", type: "uint256" },
-          { internalType: "string", name: "pendingReward", type: "string" },
-          { internalType: "int256", name: "bias", type: "int256" },
-        ],
-        internalType: "struct ProofOfIntelligence.AgentStats",
-        name: "",
-        type: "tuple",
-      },
+      { internalType: "uint256", name: "totalGuesses", type: "uint256" },
+      { internalType: "uint256", name: "bestGuesses", type: "uint256" },
+      { internalType: "uint256", name: "accuracy", type: "uint256" },
+      { internalType: "uint256", name: "lastGuessBlock", type: "uint256" },
+      { internalType: "uint256", name: "pendingReward", type: "uint256" },
+      { internalType: "int256", name: "bias", type: "int256" },
     ],
     stateMutability: "view",
     type: "function",
@@ -85,7 +78,7 @@ interface AgentStats {
   bestGuesses: number;
   accuracy: number;
   lastGuessBlock: number;
-  pendingReward: string;
+  pendingReward: string; // Keep as string for formatted value (e.g., "150.0 POI")
   bias: number;
 }
 
@@ -126,8 +119,10 @@ const Leaderboard = () => {
       }
 
       if (!provider) {
+        // Fallback to a default read-only provider
         provider =
-          ethersAny.getDefaultProvider?.() || ethers.getDefaultProvider();
+          ethersAny.getDefaultProvider?.("sepolia") ||
+          ethers.getDefaultProvider("sepolia");
       }
 
       const contract = new ethersAny.Contract(
@@ -139,38 +134,51 @@ const Leaderboard = () => {
       // Get top agents from leaderboard
       const leaderboard = await contract.getLeaderboard();
 
-      // Fetch stats for each agent
-      const agentsWithStats = await Promise.all(
-        leaderboard.map(async (address: string) => {
+      // Fetch stats for each agent, skip if ABI decoding fails
+      const agentsWithStats: Agent[] = [];
+      for (const address of leaderboard) {
+        if (!address || address === "0x" || address.length < 4) continue;
+        try {
+          // stats will be an array of values due to the corrected ABI
           const stats = await contract.getAgentStats(address);
 
-          // Calculate accuracy percentage
+          const totalGuesses = stats.totalGuesses;
+          const bestGuesses = stats.bestGuesses;
+          const pendingReward = stats.pendingReward;
+          const bias = stats.bias;
+
           const accuracyPct =
-            stats.totalGuesses > 0
-              ? `${(
-                  (Number(stats.bestGuesses) * 100) /
-                  Number(stats.totalGuesses)
-                ).toFixed(1)}%`
+            totalGuesses > 0
+              ? `${((Number(bestGuesses) * 100) / Number(totalGuesses)).toFixed(
+                  1
+                )}%`
               : "0%";
 
-          return {
+          // Format the BigInt reward value into a string (e.g., "150.0")
+          const formattedReward = ethersAny.formatEther(pendingReward || "0");
+
+          agentsWithStats.push({
             address,
             name: `Agent ${address.slice(0, 8)}...`,
             avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${address}`,
-            score: Number(stats.totalGuesses), // Use total predictions as score
+            score: Number(totalGuesses),
             accuracy: accuracyPct,
-            wins: Number(stats.bestGuesses),
+            wins: Number(bestGuesses),
             stats: {
-              totalGuesses: Number(stats.totalGuesses),
-              bestGuesses: Number(stats.bestGuesses),
+              totalGuesses: Number(totalGuesses),
+              bestGuesses: Number(bestGuesses),
               accuracy: Number(stats.accuracy),
               lastGuessBlock: Number(stats.lastGuessBlock),
-              pendingReward: stats.pendingReward,
-              bias: Number(stats.bias),
+              pendingReward: formattedReward, // Use the formatted string
+              bias: Number(bias),
             },
-          };
-        })
-      );
+          });
+        } catch (err) {
+          // Skip agent if ABI decoding fails
+          console.warn("Skipping agent due to ABI decode error:", address, err);
+          continue;
+        }
+      }
 
       setAgents(agentsWithStats);
     } catch (err: any) {
