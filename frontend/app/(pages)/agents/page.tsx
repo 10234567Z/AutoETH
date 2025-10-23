@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import Sidebar from "../../components/Sidebar";
 
-
 interface Agent {
   id: string; // agent address (string id from contract)
   name: string;
@@ -12,31 +11,31 @@ interface Agent {
   reputation: number;
   accuracy: string;
   wins: number;
+  stats: {
+    pendingRewards: string;
+    bias: number;
+    lastActive: number;
+    totalPredictions: number;
+  };
 }
 
 // Minimal contract info (read-only)
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "error";
 const CONTRACT_ABI = [
-  {
-    inputs: [],
-    name: "getLeaderboard",
-    outputs: [{ internalType: "address[]", name: "", type: "address[]" }],
-    stateMutability: "view",
-    type: "function",
-  },
+  // --- This is the function you already had ---
   {
     inputs: [
-      { internalType: "address", name: "agentAddress", type: "address" },
+      { internalType: "address", name: "walletAddress", type: "address" },
     ],
-    name: "getAgent",
+    name: "getAgentDetailsByWallet",
     outputs: [
       {
         components: [
-          { internalType: "address", name: "agentAddress", type: "address" },
+          { internalType: "string", name: "agentAddress", type: "string" },
           {
-            internalType: "address",
+            internalType: "string",
             name: "agentWalletAddress",
-            type: "address",
+            type: "string",
           },
           { internalType: "uint256", name: "totalGuesses", type: "uint256" },
           { internalType: "uint256", name: "bestGuesses", type: "uint256" },
@@ -44,15 +43,41 @@ const CONTRACT_ABI = [
           { internalType: "uint256", name: "lastGuessBlock", type: "uint256" },
           { internalType: "uint256", name: "deviation", type: "uint256" },
         ],
-        internalType: "struct ProofOfIntelligence.Agent",
-        name: "agent",
-        type: "tuple",
+        internalType: "struct ProofOfIntelligence.Agent[]",
+        name: "",
+        type: "tuple[]",
       },
     ],
     stateMutability: "view",
     type: "function",
   },
+  // --- This is the function you already had ---
+  {
+    inputs: [
+      { internalType: "address", name: "walletAddress", type: "address" },
+    ],
+    name: "getAgentCountByWallet",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // --- !! THIS IS THE MISSING FUNCTION !! ---
+  {
+    inputs: [{ internalType: "string", name: "agentAddress", type: "string" }],
+    name: "getAgentStats",
+    outputs: [
+      { internalType: "uint256", name: "totalGuesses", type: "uint256" },
+      { internalType: "uint256", name: "bestGuesses", type: "uint256" },
+      { internalType: "uint256", name: "accuracy", type: "uint256" },
+      { internalType: "uint256", name: "lastGuessBlock", type: "uint256" },
+      { internalType: "uint256", name: "pendingReward", type: "uint256" },
+      { internalType: "int256", name: "bias", type: "int256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
 ];
+
 
 const AgentCard = ({
   agent,
@@ -123,6 +148,12 @@ const AddAgentModal = ({
       reputation: Math.floor(Math.random() * 100) + 800,
       accuracy: `${(Math.random() * 10 + 85).toFixed(1)}%`,
       wins: Math.floor(Math.random() * 5),
+      stats: {
+        pendingRewards: "0",
+        bias: 0,
+        lastActive: 0,
+        totalPredictions: 0,
+      },
     };
     onAdd(newAgent);
     onClose();
@@ -223,21 +254,17 @@ const AgentsPage = () => {
     setLoading(true);
     try {
       const anyWindow: any = window;
-      // Use user's provider for read calls (no tx required)
       let provider;
       const ethersAny: any = ethers;
 
       if (anyWindow.ethereum) {
         if (ethersAny.BrowserProvider) {
-          // ethers v6
           provider = new ethersAny.BrowserProvider(anyWindow.ethereum);
         } else if (ethersAny.providers?.Web3Provider) {
-          // ethers v5
           provider = new ethersAny.providers.Web3Provider(anyWindow.ethereum);
         }
       }
 
-      // Fallback to default provider if needed
       if (!provider) {
         provider =
           ethersAny.getDefaultProvider?.() || ethers.getDefaultProvider();
@@ -250,116 +277,52 @@ const AgentsPage = () => {
       );
 
       console.log("Fetching agents for wallet:", addr);
-      const results: Agent[] = [];
 
-      // First try to get this wallet's registered agent directly
-      try {
-        // Try the wallet address as agent ID first
-        const directAgent = await contract.getAgent(addr);
-        console.log("Looking for agent with wallet:", addr);
-        console.log("Direct agent lookup result:", directAgent);
+      // Get all agents registered to this wallet
+      const agentDetails = await contract.getAgentDetailsByWallet(addr);
+      console.log("Agent details:", agentDetails);
 
-        if (directAgent && directAgent.agentWalletAddress) {
-          const cleanWalletAddr = directAgent.agentWalletAddress.toLowerCase();
-          const cleanInputAddr = addr.toLowerCase();
-          if (cleanWalletAddr === cleanInputAddr) {
-            results.push({
-              id: directAgent.agentAddress || addr,
-              name: directAgent.agentAddress || "Your Agent",
-              avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
-                addr
-              )}`,
-              description: `Your registered agent`,
-              reputation: Math.floor(Math.random() * 200) + 800,
-              accuracy:
-                Number(directAgent.accuracy || 0) > 0
-                  ? `${directAgent.accuracy}%`
-                  : "0%",
-              wins: Number(directAgent.bestGuesses || 0),
-            });
-          }
-        }
-      } catch (directErr) {
-        console.log(
-          "No agent found by direct lookup, checking leaderboard...",
-          directErr
-        );
-      }
+      const results: Agent[] = await Promise.all(
+        agentDetails.map(async (agent: any) => {
+          // Get additional stats for each agent
+          const stats = await contract.getAgentStats(agent.agentAddress);
 
-      // Also check leaderboard for any other agents owned by this wallet
-      const leaderboard: string[] = await contract.getLeaderboard();
-      console.log("Got leaderboard:", leaderboard);
+          // Calculate actual accuracy from stats
+          const accuracyPct =
+            agent.totalGuesses > 0
+              ? `${((agent.bestGuesses * 100) / agent.totalGuesses).toFixed(
+                  1
+                )}%`
+              : "0%";
 
-      for (const agentAddr of leaderboard) {
-        const a = await contract.getAgent(agentAddr);
-        const [
-          agentAddress,
-          agentWalletAddr,
-          totalGuesses,
-          bestGuesses,
-          accuracy,
-        ] = a;
-        if (agentWalletAddr.toLowerCase() === addr.toLowerCase()) {
-          results.push({
-            id: agentAddress,
-            name: agentAddress.slice(0, 8) + "...",
-            avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${agentAddress}`,
-            description: `On-chain agent registered to ${agentWalletAddr}`,
-            reputation: Math.floor(Math.random() * 200) + 800,
-            accuracy: `${accuracy}%`,
-            wins: Number(bestGuesses),
-          });
-        }
-        try {
-          console.log("Checking leaderboard agent:", agentAddr);
-          const a = await contract.getAgent(agentAddr);
-          console.log("Agent data:", a);
+          // Format pending rewards in ETH
+          const pendingRewards = ethersAny.formatEther(
+            stats.pendingReward || "0"
+          );
 
-          // a is tuple: [agentAddress, agentWalletAddress, totalGuesses, bestGuesses, accuracy, lastGuessBlock, deviation]
-          const [
-            agentAddress,
-            agentWalletAddr,
-            totalGuesses,
-            bestGuesses,
-            accuracy,
-            lastGuessBlock,
-            deviation,
-          ] = a;
-
-          // Clean and normalize the wallet address
-          const cleanWalletAddr = agentWalletAddr?.toLowerCase?.() || "";
-          const cleanInputAddr = addr?.toLowerCase?.() || "";
-
-          console.log("Comparing wallets for", agentAddr, {
-            agent: cleanWalletAddr,
-            connected: cleanInputAddr,
-            matches: cleanWalletAddr === cleanInputAddr,
-          });
-
-          if (cleanWalletAddr && cleanWalletAddr === cleanInputAddr) {
-            const totalGuessesNum = Number(totalGuesses || 0);
-            const bestGuessesNum = Number(bestGuesses || 0);
-            const accuracyPct =
-              totalGuessesNum > 0
-                ? ((bestGuessesNum * 100) / totalGuessesNum).toFixed(1) + "%"
-                : "0%";
-
-            results.push({
-              id: agentAddr,
-              name: agentAddr, // no human name on-chain; show agent address. You can map to Agentverse later.
-              avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
-                agentAddr
-              )}`,
-              description: `On-chain agent ${agentAddr}`,
-              reputation: Math.floor(Math.random() * 200) + 800,
-              accuracy: accuracyPct,
-              wins: bestGuesses,
-            });
-          }
-        } catch (innerErr) {
-          console.warn("Failed to fetch agent", agentAddr, innerErr);
-        }
-      }
+          return {
+            id: agent.agentAddress,
+            name: `Agent ${agent.agentAddress.slice(0, 8)}...`,
+            avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
+              agent.agentAddress
+            )}`,
+            description: `${
+              stats.totalGuesses
+            } predictions made with ${accuracyPct} accuracy.\nBias: ${
+              stats.bias > 0 ? "+" : ""
+            }${stats.bias} | Pending Rewards: ${pendingRewards} POI`,
+            reputation: Number(agent.totalGuesses), // Use actual total guesses as reputation
+            accuracy: accuracyPct,
+            wins: Number(agent.bestGuesses),
+            stats: {
+              pendingRewards,
+              bias: stats.bias,
+              lastActive: agent.lastGuessBlock,
+              totalPredictions: agent.totalGuesses,
+            },
+          };
+        })
+      );
 
       setAgents(results);
     } catch (e: any) {

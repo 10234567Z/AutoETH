@@ -42,47 +42,64 @@ function usePythFeed() {
         `ids[]=${PRICE_IDS[0]}&ids[]=${PRICE_IDS[1]}`
     );
 
+    evtSource.onopen = () => {
+      console.log("[PythFeed] Connection OPEN");
+    };
+
     evtSource.onmessage = (event) => {
       try {
-        // 1. The stream sends a single object, not an array
-        const update = JSON.parse(event.data);
+        const data = JSON.parse(event.data);
 
-        // 2. Use the functional update form to avoid stale state
+        if (!data.parsed || !Array.isArray(data.parsed)) {
+          return;
+        }
+
         setData((prevData) => {
-          // Create a copy of the previous state
-          const prices = {
+          const newPrices = {
             ETH: { ...prevData.ETH },
             BTC: { ...prevData.BTC },
           };
 
-          const symbol = PYTH_SYMBOLS[update.id];
-          if (!symbol) return prevData; // Return old state if symbol is unknown
+          for (const update of data.parsed) {
+            const symbol = PYTH_SYMBOLS[update.id];
+            if (!symbol) continue;
 
-          const basePrice = update.price.price;
-          const expo = update.price.expo;
-          const price = basePrice * Math.pow(10, expo);
-          const updated = update.price.publish_time
-            ? new Date(update.price.publish_time * 1000).toLocaleTimeString()
-            : "-";
+            // --- START FIX ---
+            // Explicitly convert all parts of the calculation to Number
+            const basePrice = Number(update.price.price);
+            const expo = Number(update.price.expo);
+            const price = basePrice * Math.pow(10, expo);
+            // --- END FIX ---
 
-          // 3. Get the *actual* previous price from prevData
-          const prevPrice =
-            symbol === "ETH/USD" ? prevData.ETH.price : prevData.BTC.price;
+            // Check if calculation failed (NaN)
+            if (isNaN(price)) {
+              console.error(
+                "[PythFeed] Price calculation resulted in NaN!",
+                update
+              );
+              continue; // Skip this update
+            }
 
-          const change =
-            prevPrice > 0
-              ? (((price - prevPrice) / prevPrice) * 100).toFixed(2) + "%"
-              : "0%";
+            const updated = update.price.publish_time
+              ? new Date(update.price.publish_time * 1000).toLocaleTimeString()
+              : "-";
 
-          if (symbol === "ETH/USD") {
-            prices.ETH = { price, updated, change };
+            const prevPrice =
+              symbol === "ETH/USD" ? prevData.ETH.price : prevData.BTC.price;
+
+            const change =
+              prevPrice > 0
+                ? (((price - prevPrice) / prevPrice) * 100).toFixed(2) + "%"
+                : "0%";
+
+            if (symbol === "ETH/USD") {
+              newPrices.ETH = { price, updated, change };
+            }
+            if (symbol === "BTC/USD") {
+              newPrices.BTC = { price, updated, change };
+            }
           }
-          if (symbol === "BTC/USD") {
-            prices.BTC = { price, updated, change };
-          }
-
-          // Return the new state
-          return prices;
+          return newPrices;
         });
       } catch (e) {
         console.error("Error processing price update:", e);
@@ -90,14 +107,15 @@ function usePythFeed() {
     };
 
     evtSource.onerror = (error) => {
-      console.error("Error in price feed:", error);
+      console.error("[PythFeed] EventSource ERROR:", error);
       evtSource.close();
     };
 
     return () => {
+      console.log("[PythFeed] Closing connection.");
       evtSource.close();
     };
-  }, []); // The empty array is correct, as we're using functional updates
+  }, []);
 
   return data;
 }

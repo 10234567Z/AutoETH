@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import Sidebar from "../../components/Sidebar";
 
-
 // --- Type Definitions ---
 interface OnchainBlock {
   blockNumber: number;
@@ -236,34 +235,44 @@ const BlocksPage = () => {
         const count = Number(mempoolCount);
         let mempoolTxs: any[] = [];
         if (count > 0) {
-          // getMempoolTransactions(startId, endId) is inclusive, so endId = count - 1
           mempoolTxs = await contract.getMempoolTransactions(0, count - 1);
         }
-        // Parse mempool transactions to match MempoolItem interface
         const pools: MempoolSnapshot[] = [];
         if (mempoolTxs && mempoolTxs.length > 0) {
           mempoolTxs.forEach((tx: any, idx: number) => {
-            // txData may be nested, handle both array/object
-            let txHash = "";
+            // Support both object and array structure
+            let txObj: MempoolItem;
             if (tx.txData) {
-              if (typeof tx.txData.txHash === "string") {
-                txHash = tx.txData.txHash;
-              } else if (tx.txData.txHash) {
-                txHash = tx.txData.txHash.toString();
-              }
-            } else if (tx[0] && tx[0].txHash) {
-              txHash = tx[0].txHash.toString();
+              // Object style
+              txObj = {
+                txHash: tx.txData.txHash,
+                gasPrice: Number(tx.txData.gasPrice ?? tx.gasPrice ?? 0),
+                blockNumber: Number(
+                  tx.txData.blockNumber ?? tx.blockNumber ?? 0
+                ),
+                isValidated: Boolean(tx.isValidated ?? false),
+              };
+            } else if (Array.isArray(tx) && tx.length >= 4) {
+              // Array style: [txData, gasPrice, blockNumber, isValidated]
+              const txData = tx[0] || {};
+              txObj = {
+                txHash: txData.txHash ?? "",
+                gasPrice: Number(tx[1] ?? 0),
+                blockNumber: Number(tx[2] ?? 0),
+                isValidated: Boolean(tx[3] ?? false),
+              };
+            } else {
+              // Fallback for unexpected structure
+              txObj = {
+                txHash: "",
+                gasPrice: 0,
+                blockNumber: 0,
+                isValidated: false,
+              };
             }
             pools.push({
               id: idx,
-              txs: [
-                {
-                  txHash,
-                  gasPrice: Number(tx.gasPrice ?? tx[1] ?? 0),
-                  blockNumber: Number(tx.blockNumber ?? tx[2] ?? 0),
-                  isValidated: Boolean(tx.isValidated ?? tx[3] ?? false),
-                },
-              ],
+              txs: [txObj],
             });
           });
         }
@@ -281,7 +290,7 @@ const BlocksPage = () => {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#1a1a2e] to-[#0A0B0F] py-20 px-4 text-white">
+    <main className="min-h-screen bg-gradient-to-b ml-16 from-[#1a1a2e] to-[#0A0B0F] py-20 px-4 text-white">
       <Sidebar activePage="blocks" />
 
       <div className="max-w-7xl mx-auto">

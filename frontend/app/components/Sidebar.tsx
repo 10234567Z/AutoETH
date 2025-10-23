@@ -105,6 +105,7 @@ const Sidebar = ({ activePage }: SidebarProps) => {
             cursor: "pointer",
             padding: "8px 0",
             marginTop: 0,
+            paddingLeft:"18px",
             justifyContent: "flex-start",
           }}
           onClick={handleSignOut}
