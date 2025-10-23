@@ -144,16 +144,16 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0A0B0F] via-[#1a1a2e] to-[#0A0B0F]">
+    <div className="min-h-screen bg-[#0A0B0F]">
       <Sidebar activePage="dashboard" />
 
       <main className="ml-16 p-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-5xl font-bold text-white mb-2">
             AutoETH Dashboard
           </h1>
-          <p className="text-gray-400 text-lg">
+          <p className="text-gray-500 text-lg">
             Welcome back! Here's your AI agent performance overview
           </p>
         </div>
@@ -161,7 +161,7 @@ const Dashboard = () => {
         {/* Main Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* 3D Model - Takes 2 columns */}
-          <div className="lg:col-span-2 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-white/10 rounded-2xl p-6 shadow-2xl">
+          <div className="lg:col-span-2 bg-[#13141B] border border-[#1F2937] rounded-xl p-6">
             <div className="h-[500px]">
               <ModelViewer />
             </div>
@@ -170,8 +170,8 @@ const Dashboard = () => {
           {/* Stats Cards - Takes 1 column */}
           <div className="space-y-6">
             {/* Wallet Info Card */}
-            <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 backdrop-blur-sm border border-purple-500/20 rounded-2xl p-6 shadow-xl">
-              <h3 className="text-lg font-semibold text-purple-300 mb-4 flex items-center gap-2">
+            <div className="bg-[#13141B] border border-[#1F2937] rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -190,28 +190,28 @@ const Dashboard = () => {
               {walletAddress ? (
                 <div className="space-y-3">
                   <div>
-                    <p className="text-xs text-gray-400 mb-1">
+                    <p className="text-xs text-gray-500 mb-1">
                       Connected Address
                     </p>
-                    <p className="font-mono text-sm text-white bg-black/30 px-3 py-2 rounded-lg truncate">
+                    <p className="font-mono text-sm text-white bg-[#0A0B0F] px-3 py-2 rounded-lg truncate border border-[#1F2937]">
                       {walletAddress}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 pt-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-green-400">Connected</span>
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-emerald-500">Connected</span>
                   </div>
                 </div>
               ) : (
-                <div className="text-gray-400 text-sm">
+                <div className="text-gray-500 text-sm">
                   Connect your wallet to view details
                 </div>
               )}
             </div>
 
             {/* Network Stats Card */}
-            <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 backdrop-blur-sm border border-blue-500/20 rounded-2xl p-6 shadow-xl">
-              <h3 className="text-lg font-semibold text-blue-300 mb-4 flex items-center gap-2">
+            <div className="bg-[#13141B] border border-[#1F2937] rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -229,19 +229,19 @@ const Dashboard = () => {
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400 text-sm">Current Block</span>
+                  <span className="text-gray-500 text-sm">Current Block</span>
                   <span className="text-white font-bold text-lg">
                     {currentBlock}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400 text-sm">Current Round</span>
+                  <span className="text-gray-500 text-sm">Current Round</span>
                   <span className="text-white font-bold text-lg">
                     {currentRound}
                   </span>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                  <span className="text-gray-400 text-sm">Network</span>
+                <div className="flex justify-between items-center pt-2 border-t border-[#1F2937]">
+                  <span className="text-gray-500 text-sm">Network</span>
                   <span className="text-blue-400 font-semibold text-sm">
                     Base Sepolia
                   </span>
@@ -254,11 +254,11 @@ const Dashboard = () => {
         {/* Performance Metrics - Full Width */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {/* Total Agents */}
-          <div className="bg-gradient-to-br from-pink-900/30 to-pink-800/20 backdrop-blur-sm border border-pink-500/20 rounded-2xl p-6 shadow-xl hover:shadow-pink-500/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="bg-[#13141B] border border-[#1F2937] rounded-xl p-6 hover:border-[#2D3748] transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-pink-500/20 rounded-xl">
+              <div className="p-3 bg-[#1F2937] rounded-xl">
                 <svg
-                  className="w-6 h-6 text-pink-400"
+                  className="w-6 h-6 text-gray-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -275,15 +275,15 @@ const Dashboard = () => {
             <h3 className="text-3xl font-bold text-white mb-1">
               {agentStats.totalAgents}
             </h3>
-            <p className="text-pink-300 text-sm font-medium">Total Agents</p>
+            <p className="text-gray-500 text-sm font-medium">Total Agents</p>
           </div>
 
           {/* Total Predictions */}
-          <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 backdrop-blur-sm border border-purple-500/20 rounded-2xl p-6 shadow-xl hover:shadow-purple-500/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="bg-[#13141B] border border-[#1F2937] rounded-xl p-6 hover:border-[#2D3748] transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-purple-500/20 rounded-xl">
+              <div className="p-3 bg-[#1F2937] rounded-xl">
                 <svg
-                  className="w-6 h-6 text-purple-400"
+                  className="w-6 h-6 text-gray-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -300,17 +300,17 @@ const Dashboard = () => {
             <h3 className="text-3xl font-bold text-white mb-1">
               {agentStats.totalPredictions}
             </h3>
-            <p className="text-purple-300 text-sm font-medium">
+            <p className="text-gray-500 text-sm font-medium">
               Total Predictions
             </p>
           </div>
 
           {/* Best Predictions */}
-          <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 backdrop-blur-sm border border-green-500/20 rounded-2xl p-6 shadow-xl hover:shadow-green-500/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="bg-[#13141B] border border-[#1F2937] rounded-xl p-6 hover:border-[#2D3748] transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-green-500/20 rounded-xl">
+              <div className="p-3 bg-[#1F2937] rounded-xl">
                 <svg
-                  className="w-6 h-6 text-green-400"
+                  className="w-6 h-6 text-gray-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -327,17 +327,17 @@ const Dashboard = () => {
             <h3 className="text-3xl font-bold text-white mb-1">
               {agentStats.bestPredictions}
             </h3>
-            <p className="text-green-300 text-sm font-medium">
+            <p className="text-gray-500 text-sm font-medium">
               Best Predictions
             </p>
           </div>
 
           {/* Average Accuracy */}
-          <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 backdrop-blur-sm border border-yellow-500/20 rounded-2xl p-6 shadow-xl hover:shadow-yellow-500/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="bg-[#13141B] border border-[#1F2937] rounded-xl p-6 hover:border-[#2D3748] transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-yellow-500/20 rounded-xl">
+              <div className="p-3 bg-[#1F2937] rounded-xl">
                 <svg
-                  className="w-6 h-6 text-yellow-400"
+                  className="w-6 h-6 text-gray-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -354,19 +354,19 @@ const Dashboard = () => {
             <h3 className="text-3xl font-bold text-white mb-1">
               {agentStats.averageAccuracy}%
             </h3>
-            <p className="text-yellow-300 text-sm font-medium">
+            <p className="text-gray-500 text-sm font-medium">
               Average Accuracy
             </p>
           </div>
         </div>
 
         {/* Rewards Section */}
-        <div className="bg-gradient-to-br from-indigo-900/30 to-indigo-800/20 backdrop-blur-sm border border-indigo-500/20 rounded-2xl p-8 shadow-xl">
+        <div className="bg-[#13141B] border border-[#1F2937] rounded-xl p-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-indigo-500/20 rounded-xl">
+              <div className="p-3 bg-[#1F2937] rounded-xl">
                 <svg
-                  className="w-7 h-7 text-indigo-400"
+                  className="w-7 h-7 text-gray-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -383,24 +383,24 @@ const Dashboard = () => {
                 <h3 className="text-2xl font-bold text-white">
                   Pending Rewards
                 </h3>
-                <p className="text-indigo-300 text-sm">
+                <p className="text-gray-500 text-sm">
                   POI tokens ready to claim
                 </p>
               </div>
             </div>
-            <button className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 rounded-xl font-semibold text-white shadow-lg hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5">
+            <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold text-white transition-colors duration-200">
               Claim Rewards
             </button>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-5xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="text-5xl font-bold text-white">
               {parseFloat(agentStats.pendingRewards).toFixed(4)}
             </span>
-            <span className="text-2xl text-indigo-300 font-semibold">POI</span>
+            <span className="text-2xl text-gray-400 font-semibold">POI</span>
           </div>
           {loading && (
-            <div className="mt-4 flex items-center gap-2 text-indigo-400">
-              <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="mt-4 flex items-center gap-2 text-gray-400">
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
               <span className="text-sm">Loading stats...</span>
             </div>
           )}
