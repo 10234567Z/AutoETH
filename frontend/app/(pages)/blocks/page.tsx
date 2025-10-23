@@ -68,7 +68,16 @@ const CONTRACT_ABI = [
     outputs: [
       {
         components: [
-          { internalType: "tuple", name: "txData", type: "tuple" },
+          {
+            components: [
+              { internalType: "address", name: "txHash", type: "address" },
+              { internalType: "uint256", name: "gasPrice", type: "uint256" },
+              { internalType: "uint256", name: "blockNumber", type: "uint256" },
+            ],
+            internalType: "struct ProofOfIntelligence.TxData",
+            name: "txData",
+            type: "tuple",
+          },
           { internalType: "uint256", name: "gasPrice", type: "uint256" },
           { internalType: "uint256", name: "blockNumber", type: "uint256" },
           { internalType: "bool", name: "isValidated", type: "bool" },
