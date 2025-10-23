@@ -309,13 +309,13 @@ contract ProofOfIntelligence {
         (int256 actualPrice, ) = readPythPrice(priceFeedId);
         require(actualPrice > 0, "Could not get valid price");
 
-        round.actualPrice = actualPrice;
+        round.actualPrice = actualPrice / 1e8;
         round.finalized = true;
 
         // Determine winner (agent with closest prediction)
         string memory winner = _determineWinner(
             currentPredictionRound,
-            actualPrice
+            actualPrice / 1e8
         );
         round.winnerAgent = winner;
 
@@ -329,8 +329,8 @@ contract ProofOfIntelligence {
                 _recordPredictionHistory(
                     agentAddr,
                     currentPredictionRound,
-                    int64(pred.predictedPrice),
-                    int64(actualPrice)
+                    pred.predictedPrice,
+                    actualPrice / 1e8
                 );
                 
                 // Update agent stats
@@ -347,12 +347,12 @@ contract ProofOfIntelligence {
         _distributeRewards(currentPredictionRound, winner);
 
         // Mine the block
-        _mineBlock(winner, actualPrice);
+        _mineBlock(winner, actualPrice / 1e8);
 
         emit RoundFinalized(
             currentPredictionRound,
             round.winnerAgent,
-            actualPrice
+            actualPrice / 1e8
         );
     }
 
@@ -563,11 +563,11 @@ contract ProofOfIntelligence {
     function _recordPredictionHistory(
         string memory agentAddr,
         uint256 roundId,
-        int64 predicted,
-        int64 actual
+        int256 predicted,
+        int256 actual
     ) internal {
-        int256 difference = int256(predicted - actual);
-        
+        int256 difference = predicted - actual;
+
         PredictionHistory memory history = PredictionHistory({
             roundId: roundId,
             predicted: predicted,
@@ -800,7 +800,6 @@ contract ProofOfIntelligence {
      */
     function getMempoolTransactions(uint256 startId, uint256 endId) external view returns (Mempool[] memory) {
         require(endId >= startId, "Invalid range");
-        require(endId < current_mempool, "End ID exceeds current");
         
         uint256 length = endId - startId + 1;
         Mempool[] memory txs = new Mempool[](length);
