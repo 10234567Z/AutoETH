@@ -115,15 +115,8 @@ const AgentCard = ({
       </div>
     </div>
     <div className="flex justify-end gap-2 mt-4">
-      <button className="text-xs bg-white/5 hover:bg-white/10 text-white px-3 py-1 rounded-md transition-all">
-        Edit
-      </button>
-      <button
-        onClick={() => onDelete(agent.id)}
-        className="text-xs bg-red-500/20 hover:bg-red-500/40 text-red-300 px-3 py-1 rounded-md transition-all"
-      >
-        Delete
-      </button>
+      
+      
     </div>
   </div>
 );
@@ -347,7 +340,7 @@ const AgentsPage = () => {
             typeof network.chainId === "number"
               ? network.chainId
               : Number(network.chainId);
-          if (chainId !== 11155111) {
+          if (chainId !== 84532) {
             setError(
               `Please switch to Sepolia network. Current network ID: ${chainId}`
             );
@@ -420,7 +413,6 @@ const AgentsPage = () => {
               </button>
             ) : (
               <div className="text-sm text-gray-300">
-                Connected: <span className="font-mono">{walletAddress}</span>
               </div>
             )}
             <button

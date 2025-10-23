@@ -186,7 +186,7 @@ const BlocksPage = () => {
           : Number(network.chainId);
       console.log("Current network:", chainId);
 
-      if (chainId !== 11155111) {
+      if (chainId !== 84532) {
         throw new Error(
           `Please switch to Sepolia network (current: ${chainId})`
         );
