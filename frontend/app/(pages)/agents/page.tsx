@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
+import { useRouter } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
 
 interface Agent {
@@ -19,8 +20,8 @@ interface Agent {
   };
 }
 
-
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+const CONTRACT_ADDRESS =
+  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
   "0x6b4376c102bdd8254dfcd01e6347a9e30d52400a";
 
 const CONTRACT_ABI = [
@@ -154,83 +155,6 @@ const AgentCard = ({
   );
 };
 
-// ---------- MODERN ADD AGENT MODAL ----------
-const AddAgentModal = ({
-  onAdd,
-  onClose,
-}: {
-  onAdd: (agent: Agent) => void;
-  onClose: () => void;
-}) => {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-
-  const handleAdd = () => {
-    if (!name || !description) return;
-    const newAgent: Agent = {
-      id: Date.now().toString(),
-      name,
-      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`,
-      description,
-      reputation: Math.floor(Math.random() * 100) + 800,
-      accuracy: `${(Math.random() * 10 + 85).toFixed(1)}%`,
-      wins: Math.floor(Math.random() * 5),
-      stats: {
-        pendingRewards: "0",
-        bias: 0,
-        lastActive: 0,
-        totalPredictions: 0,
-      },
-    };
-    onAdd(newAgent);
-    onClose();
-  };
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center"
-      onClick={onClose}
-    >
-      <div
-        className="bg-gradient-to-b from-[#1b1c2e] to-[#10111f] border border-white/10 rounded-2xl p-8 shadow-2xl w-full max-w-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-2xl font-bold text-white mb-6">Add New Agent</h2>
-        <div className="space-y-4">
-          <input
-            type="text"
-            placeholder="Agent Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full bg-[#0b0c0f] border border-white/10 rounded-md px-4 py-3 text-white outline-none focus:border-purple-500"
-          />
-          <textarea
-            placeholder="Agent Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full bg-[#0b0c0f] border border-white/10 rounded-md px-4 py-3 text-white outline-none focus:border-purple-500"
-            rows={3}
-          />
-        </div>
-        <div className="flex justify-end gap-4 mt-6">
-          <button
-            onClick={onClose}
-            className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-md transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleAdd}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-md font-semibold transition-all"
-          >
-            Add Agent
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // ---------- BASE SEPOLIA NETWORK HELPERS ----------
 const ensureBaseSepoliaNetwork = async (anyWindow: any) => {
   const BASE_SEPOLIA_CHAIN_ID = "0x14a34"; // 84532
@@ -264,8 +188,8 @@ const ensureBaseSepoliaNetwork = async (anyWindow: any) => {
 
 // ---------- MAIN PAGE ----------
 const AgentsPage = () => {
+  const router = useRouter();
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
   const [loading, setLoading] = useState(false);
@@ -383,8 +307,6 @@ const AgentsPage = () => {
     }
   };
 
-  const handleAddAgent = (newAgent: Agent) =>
-    setAgents((p) => [newAgent, ...p]);
   const handleDeleteAgent = (id: string) =>
     setAgents((p) => p.filter((a) => a.id !== id));
 
@@ -403,12 +325,10 @@ const AgentsPage = () => {
                 Connect Wallet
               </button>
             ) : (
-              <div className="text-sm text-gray-300 font-mono truncate max-w-xs">
-                {walletAddress}
-              </div>
+              <div className="text-sm text-gray-300 font-mono truncate max-w-xs"></div>
             )}
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => router.push("/onboarding")}
               className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-semibold transition-all flex items-center gap-2"
             >
               <svg
@@ -448,13 +368,6 @@ const AgentsPage = () => {
           )}
         </div>
       </div>
-
-      {isModalOpen && (
-        <AddAgentModal
-          onAdd={handleAddAgent}
-          onClose={() => setIsModalOpen(false)}
-        />
-      )}
     </main>
   );
 };
