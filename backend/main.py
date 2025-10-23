@@ -252,15 +252,15 @@ def analyze_history(history):
     for h in history[-5:]:  # Last 5 predictions
         recent.append({{
             "round": h[0],
-            "predicted": h[1] / 100,  # Convert back from int
-            "actual": h[2] / 100,
-            "diff": h[3] / 100
+            "predicted": h[1] / 1e8,  # Convert from ×1e8 to dollars
+            "actual": h[2] / 1e8,
+            "diff": h[3] / 1e8
         }})
     
     return {{
         "has_history": True,
-        "avg_bias": avg_bias / 100,  # Convert to dollars
-        "avg_error": avg_error / 100,
+        "avg_bias": avg_bias / 1e8,  # Convert to dollars
+        "avg_error": avg_error / 1e8,
         "total_predictions": len(history),
         "recent_predictions": recent
     }}
@@ -312,17 +312,17 @@ def get_ai_prediction(eth_price_data):
             bias_direction = "too HIGH" if analysis['avg_bias'] > 0 else "too LOW"
             system_prompt += f"YOUR HISTORICAL PERFORMANCE:\\n"
             system_prompt += f"- Total predictions made: {{analysis['total_predictions']}}\\n"
-            system_prompt += f"- Average bias: ${{analysis['avg_bias']:.2f}} (you tend to predict {{bias_direction}})\\n"
-            system_prompt += f"- Average error: ${{analysis['avg_error']:.2f}}\\n"
+            system_prompt += f"- Average bias: ${{analysis['avg_bias']:.8f}} (you tend to predict {{bias_direction}})\\n"
+            system_prompt += f"- Average error: ${{analysis['avg_error']:.8f}}\\n"
             system_prompt += f"- Recent predictions (last 5):\\n"
             for p in analysis['recent_predictions']:
-                system_prompt += f"  Round {{p['round']}}: Predicted ${{p['predicted']:.2f}}, Actual ${{p['actual']:.2f}}, Diff ${{p['diff']:.2f}}\\n"
+                system_prompt += f"  Round {{p['round']}}: Predicted ${{p['predicted']:.8f}}, Actual ${{p['actual']:.8f}}, Diff ${{p['diff']:.8f}}\\n"
             
             system_prompt += "\\nLEARN FROM YOUR MISTAKES: Adjust your next prediction to compensate for your bias and improve accuracy.\\n\\n"
         else:
             system_prompt += "This is your first prediction. No historical data yet.\\n\\n"
         
-        system_prompt += "Predict the ETH price in 60 seconds. Output ONLY the predicted price as a number, nothing else."
+        system_prompt += "Predict the ETH price in 60 seconds with 8 decimal precision (e.g., 3895.12345678). Output ONLY the predicted price as a number, nothing else."
         
         r = client.chat.completions.create(
             model="asi1-fast",
@@ -372,8 +372,8 @@ def submit_prediction_onchain(ctx, agent_addr, predicted_price):
         account = w3.eth.account.from_key(PRIVATE_KEY)
         ctx.logger.info(f"Account: {{account.address}}")
         
-        # Convert price to int (multiply by 100 for 2 decimal precision)
-        price_int = int(float(predicted_price) * 100)
+        # Convert price to int (multiply by 1e8 for 8 decimal precision - matching Pyth format)
+        price_int = int(round(float(predicted_price) * 1e8))
         ctx.logger.info(f"Price as int: {{price_int}}")
         
         # Get current nonce and gas price (use 'pending' to include pending transactions)

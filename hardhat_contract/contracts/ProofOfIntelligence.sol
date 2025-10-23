@@ -309,13 +309,13 @@ contract ProofOfIntelligence {
         (int256 actualPrice, ) = readPythPrice(priceFeedId);
         require(actualPrice > 0, "Could not get valid price");
 
-        round.actualPrice = actualPrice / 1e8;
+        round.actualPrice = actualPrice;  // Store raw Pyth price (×1e8 precision)
         round.finalized = true;
 
         // Determine winner (agent with closest prediction)
         string memory winner = _determineWinner(
             currentPredictionRound,
-            actualPrice / 1e8
+            actualPrice  // Pass raw value for accurate comparison
         );
         round.winnerAgent = winner;
 
@@ -330,7 +330,7 @@ contract ProofOfIntelligence {
                     agentAddr,
                     currentPredictionRound,
                     pred.predictedPrice,
-                    actualPrice / 1e8
+                    actualPrice  // Store raw value for full precision
                 );
                 
                 // Update agent stats
@@ -347,12 +347,12 @@ contract ProofOfIntelligence {
         _distributeRewards(currentPredictionRound, winner);
 
         // Mine the block
-        _mineBlock(winner, actualPrice / 1e8);
+        _mineBlock(winner, actualPrice);  // Pass raw value
 
         emit RoundFinalized(
             currentPredictionRound,
             round.winnerAgent,
-            actualPrice / 1e8
+            actualPrice  // Emit raw value (off-chain will format)
         );
     }
 
