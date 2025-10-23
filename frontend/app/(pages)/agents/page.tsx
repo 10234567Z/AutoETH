@@ -21,8 +21,7 @@ interface Agent {
 }
 
 const CONTRACT_ADDRESS =
-  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-  "0x6b4376c102bdd8254dfcd01e6347a9e30d52400a";
+  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
 
 const CONTRACT_ABI = [
   {
@@ -252,6 +251,11 @@ const AgentsPage = () => {
         }
       } else {
         setError("No wallet found.");
+        return;
+      }
+
+      if (!CONTRACT_ADDRESS) {
+        setError("Contract address not configured.");
         return;
       }
 

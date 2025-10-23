@@ -28,6 +28,13 @@ interface MempoolSnapshot {
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "error";
 const CONTRACT_ABI = [
   {
+    inputs: [],
+    name: "currentBlockNumber",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [{ internalType: "uint256", name: "count", type: "uint256" }],
     name: "getLatestBlocks",
     outputs: [
@@ -108,6 +115,14 @@ const BlockCard = ({ block }: { block: OnchainBlock }) => (
     <div className="text-sm text-gray-300 mt-1">
       Miner Agent: {block.minerAgent}
     </div>
+    {block.targetPrice > 0 && (
+      <div className="text-sm text-gray-300 mt-1">
+        Target Price:{" "}
+        <span className="text-green-400 font-semibold">
+          ${(block.targetPrice / 1e8).toFixed(2)}
+        </span>
+      </div>
+    )}
   </div>
 );
 
@@ -197,15 +212,45 @@ const BlocksPage = () => {
 
       if (chainId !== 84532) {
         throw new Error(
-          `Please switch to Sepolia network (current: ${chainId})`
+          `Please switch to Base Sepolia network (current: ${chainId})`
         );
       }
 
-      // Fetch latest blocks (10)
-      const rawBlocks = await contract.getLatestBlocks(10);
-      console.log("Raw blocks from chain:", rawBlocks);
+      // Check how many blocks exist first
+      // currentBlockNumber represents the highest block number (starts at 1 for genesis)
+      let currentBlock = 0;
+      try {
+        currentBlock = Number(await contract.currentBlockNumber());
+        console.log("Current block number:", currentBlock);
+      } catch (e) {
+        console.warn("Could not fetch current block number:", e);
+      }
 
-      const parsedBlocks: OnchainBlock[] = rawBlocks.map((b: any) => {
+      // If currentBlockNumber is 0, no blocks exist (not even genesis)
+      // This shouldn't happen as constructor mines genesis, but handle it
+      if (currentBlock === 0) {
+        console.log("No blocks mined yet");
+        setBlocks([]);
+        setMempools([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch latest blocks
+      // currentBlockNumber = 1 means 1 block exists (genesis at blockchain[1])
+      // We can safely request up to currentBlockNumber blocks
+      const blocksToFetch = Math.min(10, currentBlock);
+
+      let rawBlocks;
+      try {
+        rawBlocks = await contract.getLatestBlocks(blocksToFetch);
+        console.log("Raw blocks from chain:", rawBlocks);
+      } catch (blockError: any) {
+        console.warn("Error fetching blocks:", blockError);
+        rawBlocks = [];
+      }
+
+      const parsedBlocks: OnchainBlock[] = (rawBlocks || []).map((b: any) => {
         // Handle both array and object responses
         const block = Array.isArray(b)
           ? {

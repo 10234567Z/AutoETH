@@ -779,7 +779,7 @@ contract ProofOfIntelligence {
         
         uint256 actualCount = count;
         if (currentBlockNumber < count) {
-            actualCount = currentBlockNumber + 1;
+            actualCount = currentBlockNumber;  // Fixed: removed + 1
         }
         
         Block[] memory blocks = new Block[](actualCount);
