@@ -249,10 +249,6 @@ const Leaderboard = () => {
                     <span className="font-semibold text-lg text-white">
                       {agent.name}
                     </span>
-                    <span className="text-xs text-gray-400">
-                      Bias: {agent.stats.bias > 0 ? "+" : ""}
-                      {agent.stats.bias}
-                    </span>
                   </div>
                 </div>
                 <div className="w-7/12 grid grid-cols-3 text-white/90 text-center text-lg">

@@ -59,7 +59,6 @@ const Onboarding = () => {
   const [readme, setReadme] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [agentverseKey, setAgentverseKey] = useState("");
-  const [avatar, setAvatar] = useState(AVATAR_OPTIONS[0]);
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
   const [showKeyHelp, setShowKeyHelp] = useState(false);
@@ -120,7 +119,7 @@ const Onboarding = () => {
     const payload: AgentDetailsPayload = {
       name,
       readme,
-      avatar_url: avatar,
+      avatar_url: "https://pbs.twimg.com/profile_images/1878738447067652096/tXQbWfpf.jpg",
       short_description: shortDescription,
       network: "testnet",
       agentverse_api_key: agentverseKey,
@@ -357,30 +356,6 @@ const Onboarding = () => {
                   placeholder="sk_live_xxx or sk_test_xxx"
                   className="w-full bg-[#0b0c0f] border border-white/10 rounded-md px-3 py-2 text-white outline-none focus:border-purple-500"
                 />
-              </div>
-
-              {/* Avatar selection */}
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">
-                  Choose Avatar
-                </label>
-                <div className="grid grid-cols-5 gap-2">
-                  {AVATAR_OPTIONS.map((src) => (
-                    <button
-                      key={src}
-                      onClick={() => setAvatar(src)}
-                      className={`p-1 rounded-md border ${
-                        avatar === src ? "border-purple-400" : "border-white/10"
-                      } bg-[#0b0c0f]`}
-                    >
-                      <img
-                        src={src}
-                        alt="avatar"
-                        className="rounded-md w-16 h-16"
-                      />
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* Wallet connection */}

@@ -61,13 +61,6 @@ const Sidebar = ({ activePage }: SidebarProps) => {
           <span className={`nav-text ${isOpen ? "visible" : ""}`}>Home</span>
         </Link>
         <Link
-          href="/agents"
-          className={`nav-item ${activePage === "agents" ? "active" : ""}`}
-        >
-          <Bot size={24} className="nav-icon" />
-          <span className={`nav-text ${isOpen ? "visible" : ""}`}>Agents</span>
-        </Link>
-        <Link
           href="/blocks"
           className={`nav-item ${activePage === "blocks" ? "active" : ""}`}
         >

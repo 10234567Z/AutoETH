@@ -317,37 +317,12 @@ const BlocksPage = () => {
             </div>
             <div className="text-3xl font-bold text-white">{blocks.length}</div>
           </div>
-
-          {/* Avg Block Time */}
-          <div className="bg-[#13141B] border border-[#1F2937] rounded-xl p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-[#1F2937] rounded-lg">
-                <svg
-                  className="w-5 h-5 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div className="text-sm text-gray-500">Avg Block Time</div>
-            </div>
-            <div className="text-3xl font-bold text-white">
-              {avgBlockTime > 0 ? `${avgBlockTime.toFixed(0)}s` : "N/A"}
-            </div>
-          </div>
         </div>
 
         {/* Blocks List */}
         <div className="bg-[#13141B] border border-[#1F2937] rounded-xl p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-white">Recent Blocks</h2>
+            <h2 className="text-xl font-bold text-white">Block Mined</h2>
             {loading && (
               <div className="flex items-center gap-2 text-gray-400">
                 <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
