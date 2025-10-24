@@ -77,6 +77,15 @@ const Sidebar = ({ activePage }: SidebarProps) => {
           </span>
         </Link>
         <Link
+          href="/onboarding"
+          className={`nav-item ${activePage === "onboarding" ? "active" : ""}`}
+        >
+          <Bot size={24} className="nav-icon" />
+          <span className={`nav-text ${isOpen ? "visible" : ""}`}>
+            Add new Agent
+          </span>
+        </Link>
+        <Link
           href="/leaderboard"
           className={`nav-item ${activePage === "leaderboard" ? "active" : ""}`}
         >
@@ -98,7 +107,7 @@ const Sidebar = ({ activePage }: SidebarProps) => {
             cursor: "pointer",
             padding: "8px 0",
             marginTop: 0,
-            paddingLeft:"18px",
+            paddingLeft: "18px",
             justifyContent: "flex-start",
           }}
           onClick={handleSignOut}
