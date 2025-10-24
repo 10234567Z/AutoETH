@@ -319,6 +319,11 @@ contract ProofOfIntelligence {
         );
         round.winnerAgent = winner;
 
+        // Increment bestGuesses for the winner only
+        if (bytes(winner).length > 0) {
+            agents[winner].bestGuesses++;
+        }
+
         // Record prediction history for all participants
         for (uint256 i = 0; i < round.participants.length; i++) {
             string memory agentAddr = round.participants[i];
@@ -334,7 +339,7 @@ contract ProofOfIntelligence {
                 );
                 
                 // Update agent stats
-                agents[agentAddr].totalGuesses++;
+                // NOTE: totalGuesses already incremented in submitPrediction, don't double count
                 _updateAgentBias(agentAddr);
                 _updateAgentAccuracy(agentAddr);
                 
@@ -417,8 +422,8 @@ contract ProofOfIntelligence {
             targetPrice: targetPrice
         });
 
-        // Reward the miner
-        agents[minerAgent].bestGuesses++;
+        // NOTE: bestGuesses is incremented for winner in finalizeRoundAndMineBlock, not here
+        // Miner and winner are the same, so no need to double count
 
         emit BlockMined(currentBlockNumber, minerAgent, newBlockHash);
     }

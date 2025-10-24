@@ -34,9 +34,17 @@ async function main() {
 
   console.log("📍 Deploying from:", account.address);
   
-  // Get balance
+  // Get balance and nonce
   const balance = await publicClient.getBalance({ address: account.address });
-  console.log("💰 Balance:", (Number(balance) / 1e18).toFixed(4), "ETH\n");
+  const nonce = await publicClient.getTransactionCount({ address: account.address });
+  console.log("💰 Balance:", (Number(balance) / 1e18).toFixed(4), "ETH");
+  console.log("🔢 Current Nonce:", nonce, "\n");
+
+  // Get current gas price and add buffer for faster confirmation
+  const gasPrice = await publicClient.getGasPrice();
+  const bufferedGasPrice = (gasPrice * 120n) / 100n; // 20% higher
+  console.log("⛽ Gas Price:", (Number(gasPrice) / 1e9).toFixed(2), "gwei");
+  console.log("⛽ Using (20% buffer):", (Number(bufferedGasPrice) / 1e9).toFixed(2), "gwei\n");
 
   // Step 1: Deploy POIToken
   console.log("📤 Deploying POIToken...");
@@ -44,6 +52,7 @@ async function main() {
   const poiTokenHash = await walletClient.deployContract({
     abi: poiTokenArtifact.abi,
     bytecode: poiTokenArtifact.bytecode,
+    gasPrice: bufferedGasPrice,
   });
 
   console.log("📤 Transaction sent:", poiTokenHash);
@@ -54,6 +63,10 @@ async function main() {
   console.log("✅ POIToken deployed!");
   console.log("📍 POIToken Address:", poiTokenReceipt.contractAddress);
 
+  // Wait a bit before next deployment to avoid nonce issues
+  console.log("⏳ Waiting 2 seconds before next deployment...\n");
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
   // Step 2: Deploy ProofOfIntelligence with POIToken address
   console.log("📤 Deploying ProofOfIntelligence...");
   
@@ -61,6 +74,7 @@ async function main() {
     abi: proofOfIntelligenceArtifact.abi,
     bytecode: proofOfIntelligenceArtifact.bytecode,
     args: [poiTokenReceipt.contractAddress],
+    gasPrice: bufferedGasPrice,
   });
 
   console.log("📤 Transaction sent:", proofOfIntelligenceHash);
@@ -71,6 +85,10 @@ async function main() {
   console.log("✅ ProofOfIntelligence deployed!");
   console.log("📍 Contract Address:", receipt.contractAddress);
   
+  // Wait before linking
+  console.log("⏳ Waiting 2 seconds before linking contracts...\n");
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
   // Step 3: Set ProofOfIntelligence contract in POIToken
   console.log("🔗 Linking contracts...");
   
@@ -79,6 +97,7 @@ async function main() {
     abi: poiTokenArtifact.abi,
     functionName: 'setProofOfIntelligenceContract',
     args: [receipt.contractAddress],
+    gasPrice: bufferedGasPrice,
   });
   
   console.log("📤 Transaction sent:", linkHash);
