@@ -7,7 +7,7 @@ import React from "react";
 
 import { ethers } from "ethers";
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "error";
+const CONTRACT_ADDRESS = "0x6126d4c68dcfa1191d3ad37a5f5970bcdba9a02d";
 const CONTRACT_ABI = [
   {
     inputs: [],
@@ -17,16 +17,22 @@ const CONTRACT_ABI = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "string", name: "agentAddress", type: "string" }],
+    inputs: [{ internalType: "string", name: "agentAddr", type: "string" }],
     name: "getAgentStats",
     outputs: [
       { internalType: "uint256", name: "totalGuesses", type: "uint256" },
       { internalType: "uint256", name: "bestGuesses", type: "uint256" },
       { internalType: "uint256", name: "accuracy", type: "uint256" },
-      { internalType: "uint256", name: "lastGuessBlock", type: "uint256" },
-      { internalType: "uint256", name: "pendingReward", type: "uint256" },
       { internalType: "int256", name: "bias", type: "int256" },
+      { internalType: "uint256", name: "historyLength", type: "uint256" },
     ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "string", name: "agentAddress", type: "string" }],
+    name: "getPendingRewards",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
@@ -107,6 +113,9 @@ const Leaderboard = () => {
       setLoading(true);
       setError(null);
 
+      console.log("[Leaderboard] Starting fetch...");
+      console.log("[Leaderboard] Contract Address:", CONTRACT_ADDRESS);
+
       const anyWindow: any = window;
       let provider;
       const ethersAny: any = ethers;
@@ -120,10 +129,11 @@ const Leaderboard = () => {
       }
 
       if (!provider) {
-        // Fallback to a default read-only provider
-        provider =
-          ethersAny.getDefaultProvider?.("sepolia") ||
-          ethers.getDefaultProvider("sepolia");
+        // Fallback to a default read-only provider for Base Sepolia
+        console.log("[Leaderboard] Using Alchemy RPC provider");
+        provider = new ethersAny.JsonRpcProvider(
+          "https://base-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ"
+        );
       }
 
       const contract = new ethersAny.Contract(
@@ -132,21 +142,46 @@ const Leaderboard = () => {
         provider
       );
 
+      console.log("[Leaderboard] Fetching leaderboard...");
       // Get top agents from leaderboard
       const leaderboard = await contract.getLeaderboard();
+      console.log("[Leaderboard] Raw leaderboard:", leaderboard);
+      console.log("[Leaderboard] Leaderboard type:", typeof leaderboard);
+      console.log("[Leaderboard] Is array?:", Array.isArray(leaderboard));
+      console.log("[Leaderboard] Length:", leaderboard?.length);
+      
+      // Convert to array if it's a proxy or weird object
+      const leaderboardArray = Array.isArray(leaderboard) ? leaderboard : Array.from(leaderboard || []);
+      console.log("[Leaderboard] Converted array:", leaderboardArray);
+
+      // If empty, the leaderboard hasn't been populated yet
+      if (!leaderboardArray || leaderboardArray.length === 0) {
+        console.log("[Leaderboard] Leaderboard is empty - no rounds have been finalized yet");
+        setAgents([]);
+        setLoading(false);
+        return;
+      }
 
       // Fetch stats for each agent, skip if ABI decoding fails
       const agentsWithStats: Agent[] = [];
-      for (const address of leaderboard) {
+      for (const address of leaderboardArray) {
+        console.log("[Leaderboard] Processing agent:", address);
         if (!address || address === "0x" || address.length < 4) continue;
         try {
-          // stats will be an array of values due to the corrected ABI
+          // Get agent stats using getAgentStats function (same as CLI)
+          console.log("[Leaderboard] Fetching agent stats for:", address);
           const stats = await contract.getAgentStats(address);
+          console.log("[Leaderboard] Agent stats:", stats);
+          
+          // Get pending rewards separately
+          const pendingReward = await contract.getPendingRewards(address);
+          console.log("[Leaderboard] Pending rewards:", pendingReward);
 
-          const totalGuesses = stats.totalGuesses;
-          const bestGuesses = stats.bestGuesses;
-          const pendingReward = stats.pendingReward;
-          const bias = stats.bias;
+          const totalGuesses = stats[0];
+          const bestGuesses = stats[1];
+          const accuracy = stats[2];
+          const bias = stats[3];
+          const historyLength = stats[4];
 
           const accuracyPct =
             totalGuesses > 0
@@ -168,19 +203,21 @@ const Leaderboard = () => {
             stats: {
               totalGuesses: Number(totalGuesses),
               bestGuesses: Number(bestGuesses),
-              accuracy: Number(stats.accuracy),
-              lastGuessBlock: Number(stats.lastGuessBlock),
-              pendingReward: formattedReward, // Use the formatted string
+              accuracy: Number(accuracy),
+              lastGuessBlock: 0, // Not returned by getAgentStats
+              pendingReward: formattedReward,
               bias: Number(bias),
             },
           });
         } catch (err) {
           // Skip agent if ABI decoding fails
-          console.warn("Skipping agent due to ABI decode error:", address, err);
+          console.warn("Skipping agent due to error:", address, err);
           continue;
         }
       }
 
+      console.log("[Leaderboard] Total agents processed:", agentsWithStats.length);
+      console.log("[Leaderboard] Agents with stats:", agentsWithStats);
       setAgents(agentsWithStats);
     } catch (err: any) {
       console.error("Failed to fetch leaderboard:", err);
