@@ -8,14 +8,14 @@ import React, { useEffect, useState } from "react";
 const HERMES_URL = "https://hermes.pyth.network";
 
 const PRICE_IDS = [
-  "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", // ETH/USD
-  "0xc96458d393fe9deb7a7d63a0ac41e2898a67a7750dbd166673279e06c868df0a", // BTC/USD
+  "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace", // ETH/USD
+  "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", // BTC/USD
 ];
 
 const PYTH_SYMBOLS: Record<string, string> = {
-  "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43":
+  "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace":
     "ETH/USD",
-  "0xc96458d393fe9deb7a7d63a0ac41e2898a67a7750dbd166673279e06c868df0a":
+  "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43":
     "BTC/USD",
 };
 
@@ -222,13 +222,6 @@ const FeedCard = ({
       {price
         ? `${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
         : "-"}
-    </div>
-    <div
-      className={`text-sm font-semibold ${
-        change?.includes("-") ? "text-red-400" : "text-green-400"
-      }`}
-    >
-      {change}
     </div>
     
     <div className="flex justify-between w-full text-sm text-gray-300 mt-6">
