@@ -1,6 +1,7 @@
 "use client";
 import Header from "@/app/components/Header";
 import { WalletProvider } from "@/app/context/WalletContext";
+import Sidebar from "@/app/components/Sidebar";
 
 import React, { useEffect, useState } from "react";
 
@@ -356,72 +357,76 @@ const Live = () => {
   const predictions = usePredictions();
 
   return (
-    <main className="min-h-screen bg-[#0A0B0F] py-20 px-4 flex flex-col items-center">
-      <WalletProvider>
-        <Header />
-      </WalletProvider>
-      <h1 className="text-4xl md:text-5xl font-bold text-purple-400 mb-4 mt-10 text-center">
-        Live Oracle Feed
-      </h1>
-      <p className="text-lg text-gray-300 mb-12 text-center max-w-xl">
-        Real-time price data from{" "}
-        <span className="text-purple-400">Pyth Network</span> (Hermes API) with
-        AI-based trend predictions.
-      </p>
+    <div className="min-h-screen bg-[#0A0B0F]">
+      <Sidebar activePage="live" />
+      
+      <main className="ml-16 py-20 px-4 flex flex-col items-center">
+        <WalletProvider>
+          <Header />
+        </WalletProvider>
+        <h1 className="text-4xl md:text-5xl font-bold text-purple-400 mb-4 mt-10 text-center">
+          Live Oracle Feed
+        </h1>
+        <p className="text-lg text-gray-300 mb-12 text-center max-w-xl">
+          Real-time price data from{" "}
+          <span className="text-purple-400">Pyth Network</span> (Hermes API) with
+          AI-based trend predictions.
+        </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-5xl mb-12">
-        <FeedCard
-          symbol="ETH/USD"
-          color="bg-purple-600"
-          icon={
-            <svg
-              className="w-8 h-8 text-purple-300"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <circle cx="12" cy="12" r="10" strokeWidth="2" />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 8v8m0 0l-4-4m4 4l4-4"
-              />
-            </svg>
-          }
-          price={data.ETH.price}
-          updated={data.ETH.updated}
-          change={data.ETH.change}
-          prediction="Likely bullish in next 1 hour 🚀"
-        />
-        <FeedCard
-          symbol="BTC/USD"
-          color="bg-yellow-400"
-          icon={
-            <svg
-              className="w-8 h-8 text-yellow-300"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <circle cx="12" cy="12" r="10" strokeWidth="2" />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 8v8m0 0l-4-4m4 4l4-4"
-              />
-            </svg>
-          }
-          price={data.BTC.price}
-          updated={data.BTC.updated}
-          change={data.BTC.change}
-          prediction="Slight bearish trend forming 📉"
-        />
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-5xl mb-12">
+          <FeedCard
+            symbol="ETH/USD"
+            color="bg-purple-600"
+            icon={
+              <svg
+                className="w-8 h-8 text-purple-300"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 8v8m0 0l-4-4m4 4l4-4"
+                />
+              </svg>
+            }
+            price={data.ETH.price}
+            updated={data.ETH.updated}
+            change={data.ETH.change}
+            prediction="Likely bullish in next 1 hour 🚀"
+          />
+          <FeedCard
+            symbol="BTC/USD"
+            color="bg-yellow-400"
+            icon={
+              <svg
+                className="w-8 h-8 text-yellow-300"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 8v8m0 0l-4-4m4 4l4-4"
+                />
+              </svg>
+            }
+            price={data.BTC.price}
+            updated={data.BTC.updated}
+            change={data.BTC.change}
+            prediction="Slight bearish trend forming 📉"
+          />
+        </div>
 
-      <LivePredictions predictions={predictions} prices={data} />
-    </main>
+        <LivePredictions predictions={predictions} prices={data} />
+      </main>
+    </div>
   );
 };
 
