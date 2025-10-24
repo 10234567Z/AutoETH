@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { useRouter } from "next/navigation";
+import Sidebar from "@/app/components/Sidebar";
 
 type AgentDetailsPayload = {
   name: string;
@@ -259,17 +260,20 @@ const Onboarding = () => {
 
   // --- Component UI ---
   return (
-    <main className="min-h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
-      {/* Background circles */}
-      <div className="absolute inset-0 z-0 opacity-50">
-        <div className="absolute w-96 h-96 bg-purple-900 rounded-full -top-20 -left-20 opacity-30 floating-shape" />
-        <div
-          className="absolute w-96 h-96 bg-blue-900 rounded-full -bottom-20 -right-20 opacity-30 floating-shape"
-          style={{ animationDelay: "3s" }}
-        />
-      </div>
+    <div className="min-h-screen bg-[#0A0B0F]">
+      <Sidebar activePage="onboarding" />
+      
+      <main className="ml-16 min-h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
+        {/* Background circles */}
+        <div className="absolute inset-0 z-0 opacity-50">
+          <div className="absolute w-96 h-96 bg-purple-900 rounded-full -top-20 -left-20 opacity-30 floating-shape" />
+          <div
+            className="absolute w-96 h-96 bg-blue-900 rounded-full -bottom-20 -right-20 opacity-30 floating-shape"
+            style={{ animationDelay: "3s" }}
+          />
+        </div>
 
-      <div className="flex-1 flex items-center justify-center px-4 py-24 z-10">
+        <div className="flex-1 flex items-center justify-center px-4 py-24 z-10">
         <div className="w-full max-w-5xl grid md:grid-cols-2 gap-12 items-start">
           {/* Left info */}
           <section className="text-center md:text-left">
@@ -398,8 +402,8 @@ const Onboarding = () => {
         </div>
       </div>
 
-      {/* Help Modal */}
-      {showKeyHelp && (
+        {/* Help Modal */}
+        {showKeyHelp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-[#0b0c0f] border border-white/10 rounded-lg p-6 w-full max-w-lg">
             <h3 className="text-lg font-bold mb-2">
@@ -432,8 +436,9 @@ const Onboarding = () => {
             </div>
           </div>
         </div>
-      )}
-    </main>
+        )}
+      </main>
+    </div>
   );
 };
 

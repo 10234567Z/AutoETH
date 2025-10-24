@@ -37,22 +37,6 @@ const Sidebar = ({ activePage }: SidebarProps) => {
         </button>
       </div>
       <nav className="sidebar-nav">
-        {walletAddress && (
-          <div
-            style={{
-              padding: "8px 0",
-              color: "#d1d5db",
-              fontSize: 13,
-              textAlign: "center",
-              wordBreak: "break-all",
-              marginBottom: 8,
-              background: isOpen ? "rgba(60,60,60,0.18)" : "transparent",
-              borderRadius: 6,
-            }}
-          >
-            {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-          </div>
-        )}
         <Link
           href="/dashboard"
           className={`nav-item ${activePage === "dashboard" ? "active" : ""}`}
