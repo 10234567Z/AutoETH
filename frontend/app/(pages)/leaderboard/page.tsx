@@ -7,7 +7,7 @@ import React from "react";
 
 import { ethers } from "ethers";
 
-const CONTRACT_ADDRESS = "0x6126d4c68dcfa1191d3ad37a5f5970bcdba9a02d";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
 const CONTRACT_ABI = [
   {
     inputs: [],

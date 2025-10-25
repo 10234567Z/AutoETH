@@ -245,6 +245,8 @@ const LivePredictions = ({
   const minutes = Math.floor(timeRemaining / 60);
   const seconds = timeRemaining % 60;
 
+  console.log("[LivePredictions] Rendering with roundData:", predictions);
+
   return (
     <div className="w-full max-w-5xl bg-black/30 border border-white/10 rounded-xl p-8 mt-8">
       <h2 className="text-2xl font-bold text-purple-400 mb-6 text-center">

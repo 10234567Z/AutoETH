@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPublicClient, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
 
-const CONTRACT_ADDRESS = '0x6126d4c68dcfa1191d3ad37a5f5970bcdba9a02d' as `0x${string}`;
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;  
 const RPC_URL = 'https://base-sepolia.g.alchemy.com/v2/FTdaypPQy2TZuLJhehmqRullM2x0dJPJ';
 
 const contractABI = [
