@@ -183,6 +183,7 @@ PRIVATE_KEY = {repr(SEPOLIA_PRIVATE_KEY)}
 
 # Initialize Web3
 w3 = Web3(Web3.HTTPProvider(SEPOLIA_RPC_TEMPLATE))
+
 contract_abi = [
     {{"inputs": [{{"internalType": "string", "name": "agentAddress", "type": "string"}}, {{"internalType": "int256", "name": "predictedPrice", "type": "int256"}}], "name": "submitPrediction", "outputs": [], "stateMutability": "nonpayable", "type": "function"}},
     {{"inputs": [], "name": "currentPredictionRound", "outputs": [{{"internalType": "uint256", "name": "", "type": "uint256"}}], "stateMutability": "view", "type": "function"}},
@@ -247,6 +248,30 @@ def analyze_history(history):
     total_error = sum(abs(h[3]) for h in history)
     avg_error = total_error / len(history) if len(history) > 0 else 0
     
+    # Detect patterns in prediction performance
+    winning_predictions = 0
+    losing_predictions = 0
+    
+    for h in history:
+        error = abs(h[3])  # Absolute difference in ×1e8 format
+        # Good prediction = error < $1 (1e8 in ×1e8 format)
+        if error < 1e8:
+            winning_predictions += 1
+        else:
+            losing_predictions += 1
+    
+    # Calculate win rate
+    total_count = len(history)
+    win_rate = (winning_predictions / total_count) if total_count > 0 else 0
+    
+    # Determine pattern strength based on consistency
+    if win_rate > 0.7:
+        pattern_strength = "high"
+    elif win_rate > 0.5:
+        pattern_strength = "medium"
+    else:
+        pattern_strength = "low"
+    
     # Format recent predictions for context
     recent = []
     for h in history[-5:]:  # Last 5 predictions
@@ -262,7 +287,11 @@ def analyze_history(history):
         "avg_bias": avg_bias / 1e8,  # Convert to dollars
         "avg_error": avg_error / 1e8,
         "total_predictions": len(history),
-        "recent_predictions": recent
+        "recent_predictions": recent,
+        "win_rate": win_rate,
+        "pattern_strength": pattern_strength,
+        "winning_predictions": winning_predictions,
+        "losing_predictions": losing_predictions
     }}
 
 
@@ -336,17 +365,70 @@ def get_ai_prediction(eth_price_data):
         
         # Try to parse as float directly
         try:
-            return float(prediction_text)
+            ai_pred = float(prediction_text)
         except:
             # If that fails, extract numbers
             prediction_text = prediction_text.replace('$', '').replace(',', '')
             parts = prediction_text.split()
             for part in parts:
                 try:
-                    return float(part)
+                    ai_pred = float(part)
+                    break
                 except:
                     continue
-            return eth_price_data['price']  # Fallback to current price
+            else:
+                ai_pred = eth_price_data['price']  # Fallback to current price
+        
+        # VALIDATION LAYER - Prevent hallucinations and crazy predictions
+        current = eth_price_data['price']
+        
+        # Step 1: Check for extreme hallucinations (>10% change in 60 seconds)
+        change_pct = abs(ai_pred - current) / current
+        
+        if change_pct > 0.10:
+            print(f"[VALIDATION] HALLUCINATION DETECTED!")
+            print(f"[VALIDATION] AI predicted: ${{ai_pred:.2f}}, Current: ${{current:.2f}}")
+            print(f"[VALIDATION] Change: {{change_pct * 100:.1f}}% - IMPOSSIBLE in 60 seconds!")
+            print(f"[VALIDATION] Returning tiny random variation instead")
+            import random
+            return current * (1 + random.uniform(-0.0001, 0.0001))
+        
+        # Step 2: Validate within realistic bounds (2% max change in 60 seconds)
+        max_change = current * 0.02
+        change_amount = abs(ai_pred - current)
+        
+        if change_amount > max_change:
+            print(f"[VALIDATION] BLOCKED: AI predicted ${{ai_pred:.2f}}, but that's {{change_pct * 100:.1f}}% change!")
+            print(f"[VALIDATION] Clamping to 2% max change from current price ${{current:.2f}}")
+            validated = current * 1.02 if ai_pred > current else current * 0.98
+        else:
+            validated = ai_pred
+        
+        # Step 3: Apply bias correction from historical learning
+        if analysis['has_history'] and analysis['total_predictions'] > 3:
+            bias = analysis['avg_bias']
+            
+            if bias > 0:
+                # We tend to overestimate, reduce by 1%
+                final = validated * 0.99
+            elif bias < 0:
+                # We tend to underestimate, increase by 1%
+                final = validated * 1.01
+            else:
+                final = validated
+            
+            if abs(bias) > 1.0:  # Only log if significant bias
+                print(f"[VALIDATION] Bias correction applied: ${{validated:.2f}} → ${{final:.2f}} (bias: ${{bias:.2f}})")
+        else:
+            final = validated
+        
+        # Log if we made corrections
+        if abs(final - ai_pred) > 0.01:
+            correction_pct = ((final - ai_pred) / ai_pred) * 100
+            print(f"[VALIDATION] Prediction corrected: ${{ai_pred:.2f}} → ${{final:.2f}} ({{correction_pct:+.2f}}%)")
+        
+        return float(final)
+            
     except Exception as e:
         print(f"Error getting AI prediction: {{e}}")
         return eth_price_data['price']
@@ -495,12 +577,47 @@ async def check_and_submit_prediction(ctx: Context):
         
         ctx.logger.info(f"Current ETH price: ${{eth_price_data['price']}}")
         
-        # Get AI prediction
+        # Get AI prediction with MeTTa validation
         predicted_price = get_ai_prediction(eth_price_data)
-        ctx.logger.info(f"AI Prediction (raw): ${{predicted_price}}")
+        ctx.logger.info(f"AI Prediction (validated): ${{predicted_price}}")
         
-        # Apply deviation adjustment
-        deviation_multiplier = 1 - (DEVIATION / 100)
+        # Fetch analysis for dynamic deviation
+        history = fetch_agent_history()
+        analysis = analyze_history(history)
+        
+        # Apply DYNAMIC deviation adjustment based on performance
+        if analysis['has_history'] and analysis['total_predictions'] > 5:
+            # Agent has enough history to adapt deviation
+            avg_error = analysis['avg_error']
+            win_rate = analysis.get('win_rate', 0.5)
+            
+            # Reduce deviation if performing well (accurate predictions)
+            if avg_error < 1.0 and win_rate > 0.7:
+                # Doing great! Reduce deviation by 10%
+                dynamic_dev = max(10, DEVIATION - 10)
+                ctx.logger.info(f"[ADAPTIVE] Performance excellent (error: ${{avg_error:.2f}}, win rate: {{win_rate:.1%}})")
+                ctx.logger.info(f"[ADAPTIVE] Reducing deviation: {{DEVIATION}}% → {{dynamic_dev}}%")
+            
+            # Increase deviation if performing poorly
+            elif avg_error > 5.0 or win_rate < 0.3:
+                # Not doing well, increase deviation by 10%
+                dynamic_dev = min(90, DEVIATION + 10)
+                ctx.logger.info(f"[ADAPTIVE] Performance needs improvement (error: ${{avg_error:.2f}}, win rate: {{win_rate:.1%}})")
+                ctx.logger.info(f"[ADAPTIVE] Increasing deviation: {{DEVIATION}}% → {{dynamic_dev}}%")
+            
+            # Moderate performance - keep current deviation
+            else:
+                dynamic_dev = DEVIATION
+                ctx.logger.info(f"[ADAPTIVE] Performance moderate (error: ${{avg_error:.2f}}, win rate: {{win_rate:.1%}})")
+                ctx.logger.info(f"[ADAPTIVE] Keeping deviation: {{DEVIATION}}%")
+            
+            deviation_multiplier = 1 - (dynamic_dev / 100)
+            ctx.logger.info(f"[ADAPTIVE] Stats: {{analysis['winning_predictions']}} wins, {{analysis['losing_predictions']}} losses")
+        else:
+            # Not enough history yet - use default deviation
+            deviation_multiplier = 1 - (DEVIATION / 100)
+            ctx.logger.info(f"[DEVIATION] Using default: {{DEVIATION}}% (need >5 predictions for adaptive mode)")
+        
         adjusted_price = predicted_price * deviation_multiplier
         ctx.logger.info(f"Deviation: {{DEVIATION}}% -> Adjusted: ${{adjusted_price:.2f}}")
         

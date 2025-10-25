@@ -2,13 +2,21 @@
 name = "backend"
 version = "0.1.0"
 description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.13"
+readme = {text = "Backend for Proof of Intelligence", content-type = "text/plain"}
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.118.3",
     "httpx>=0.28.1",
+    "hyperon",
     "python-dotenv>=1.1.1",
     "uagents>=0.22.10",
     "uvicorn>=0.37.0",
     "web3>=7.6.0",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["main", "judging_agent"]
