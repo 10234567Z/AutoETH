@@ -307,7 +307,7 @@ const LivePredictions = ({
                       {p.agentAddress.slice(0, 10)}...
                     </div>
                     <div className="text-xs text-gray-400">
-                      {p.bestGuesses} wins | {p.totalGuesses} total
+                      {p.bestGuesses} wins
                     </div>
                   </div>
                 </div>
@@ -390,7 +390,7 @@ const Live = () => {
         </h1>
         <p className="text-lg text-gray-300 mb-12 text-center max-w-xl">
           Real-time price data from{" "}
-          <span className="text-purple-400">Pyth Network</span> (Hermes API) with
+          <span className="text-purple-400">Pyth Network</span> with
           AI-based trend predictions.
         </p>
 

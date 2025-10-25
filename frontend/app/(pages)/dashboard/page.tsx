@@ -43,6 +43,13 @@ const CONTRACT_ABI = [
     type: "function",
   },
   {
+    inputs: [{ internalType: "string", name: "agentAddress", type: "string" }],
+    name: "claimRewards",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "currentBlockNumber",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
@@ -78,6 +85,7 @@ const Dashboard = () => {
   const [currentBlock, setCurrentBlock] = useState<number>(0);
   const [currentRound, setCurrentRound] = useState<number>(0);
   const [loading, setLoading] = useState(false);
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     if (walletAddress) {
@@ -140,6 +148,67 @@ const Dashboard = () => {
       console.error("Error fetching agent stats:", error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function claimAllRewards() {
+    if (!walletAddress) {
+      alert("Please connect your wallet first");
+      return;
+    }
+
+    if (parseFloat(agentStats.pendingRewards) === 0) {
+      alert("No rewards to claim");
+      return;
+    }
+
+    setClaiming(true);
+    try {
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        CONTRACT_ABI,
+        signer
+      );
+
+      // Get all agents for this wallet
+      const agents = await contract.getAgentDetailsByWallet(walletAddress);
+
+      console.log(`Found ${agents.length} agents, claiming rewards...`);
+
+      // Claim rewards for each agent that has pending rewards
+      for (const agent of agents) {
+        try {
+          const pendingRewards = await contract.getPendingRewards(
+            agent.agentAddress
+          );
+
+          if (Number(pendingRewards) > 0) {
+            console.log(
+              `Claiming ${ethers.formatEther(pendingRewards)} POI for agent: ${agent.agentAddress}`
+            );
+
+            const tx = await contract.claimRewards(agent.agentAddress);
+            console.log(`Transaction sent: ${tx.hash}`);
+
+            await tx.wait();
+            console.log(`✅ Claimed rewards for ${agent.agentAddress}`);
+          }
+        } catch (e) {
+          console.error(`Error claiming for ${agent.agentAddress}:`, e);
+        }
+      }
+
+      alert("Rewards claimed successfully! Check your wallet.");
+
+      // Refresh stats
+      await fetchAgentStats();
+    } catch (error: any) {
+      console.error("Error claiming rewards:", error);
+      alert(`Error claiming rewards: ${error.message || "Unknown error"}`);
+    } finally {
+      setClaiming(false);
     }
   }
 
@@ -388,8 +457,19 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold text-white transition-colors duration-200">
-              Claim Rewards
+            <button 
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-semibold text-white transition-colors duration-200"
+              onClick={claimAllRewards}
+              disabled={claiming || parseFloat(agentStats.pendingRewards) === 0}
+            >
+              {claiming ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Claiming...
+                </span>
+              ) : (
+                "Claim Rewards"
+              )}
             </button>
           </div>
           <div className="flex items-baseline gap-2">
