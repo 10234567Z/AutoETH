@@ -246,9 +246,8 @@ const Leaderboard = () => {
           <div className="hidden md:flex text-gray-400 text-sm uppercase px-6 sticky top-0 bg-[#0A0B0F] z-10 py-2">
             <div className="w-1/12">Rank</div>
             <div className="w-4/12">Agent</div>
-            <div className="w-7/12 grid grid-cols-3 text-center">
+            <div className="w-7/12 grid grid-cols-2 text-center">
               <div>Score</div>
-              <div>Accuracy</div>
               <div>Wins</div>
             </div>
           </div>
@@ -292,7 +291,7 @@ const Leaderboard = () => {
                       </span>
                     </div>
                   </div>
-                  <div className="w-7/12 grid grid-cols-3 text-white/90 text-center text-lg">
+                  <div className="w-7/12 grid grid-cols-2 text-white/90 text-center text-lg">
                     <div className="flex items-center justify-center gap-2">
                       <svg
                         className="w-5 h-5 text-purple-400"
@@ -308,22 +307,6 @@ const Leaderboard = () => {
                         />
                       </svg>
                       <span className="font-mono">{agent.score}</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-2">
-                      <svg
-                        className="w-6 h-6 text-green-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span className="font-semibold">{agent.accuracy}</span>
                     </div>
                     <div className="flex items-center justify-center gap-2">
                       <svg
