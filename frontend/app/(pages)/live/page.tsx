@@ -287,7 +287,6 @@ const LivePredictions = ({
             <div>Predicted</div>
             <div>Current</div>
             <div>Live Accuracy</div>
-            <div>Win Rate</div>
           </div>
           {predictions.map((p, idx) => {
             const accuracy = p.accuracy;
@@ -329,11 +328,6 @@ const LivePredictions = ({
                     }`}
                   >
                     {accuracy.toFixed(2)}%
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="font-bold text-lg text-purple-400">
-                    {p.winRate.toFixed(1)}%
                   </div>
                 </div>
               </div>

@@ -334,7 +334,29 @@ def get_ai_prediction(eth_price_data):
         analysis = analyze_history(history)
         
         # Build enhanced system prompt with self-learning context
-        system_prompt = f"You are an ETH price prediction AI. Current ETH price: ${{eth_price_data['price']}} USD (EMA: ${{eth_price_data['ema_price']}} USD). Based on this data predict the ethereum price and do not deviate like crazy from the price, we are talking literally just 60 seconds in future! DO NOT HALLUCINATE AT ALL TOO\\n\\n"
+        current_price = eth_price_data['price']
+        ema_price = eth_price_data['ema_price']
+        
+        # Calculate realistic bounds (±1% for 60 seconds)
+        min_realistic = current_price * 0.99
+        max_realistic = current_price * 1.01
+        
+        system_prompt = f\"\"\"You are an ETH price prediction AI. 
+
+CRITICAL CONTEXT:
+- Current ETH price: ${{current_price:.2f}} USD
+- EMA price: ${{ema_price:.2f}} USD
+- Time horizon: ONLY 60 SECONDS (not minutes, not hours - just 60 seconds!)
+- Realistic range: ${{min_realistic:.2f}} to ${{max_realistic:.2f}} (±1% max)
+
+RULES:
+1. Your prediction MUST be very close to ${{current_price:.2f}}
+2. In 60 seconds, ETH typically moves less than 0.5%
+3. DO NOT predict wild swings - this is 1 minute, not 1 day
+4. Use the current price as your anchor point
+5. Small adjustments only (±$5 maximum from current price)
+
+\"\"\"
         
         if analysis['has_history']:
             # Add historical context for self-learning
@@ -351,15 +373,31 @@ def get_ai_prediction(eth_price_data):
         else:
             system_prompt += "This is your first prediction. No historical data yet.\\n\\n"
         
-        system_prompt += "Predict the ETH price in 60 seconds with 8 decimal precision (e.g., 3895.12345678). Output ONLY the predicted price as a number, nothing else."
+        system_prompt += f\"\"\"
+IMPORTANT: Predict the ETH price in EXACTLY 60 seconds (not more).
+
+Examples of GOOD predictions when current price is ${{current_price:.2f}}:
+- ${{current_price + 2:.2f}} (small upward movement)
+- ${{current_price - 1:.2f}} (small downward movement)  
+- ${{current_price + 0.5:.2f}} (tiny increase)
+
+Examples of BAD predictions:
+- ${{current_price * 0.8:.2f}} (20% drop in 60s - IMPOSSIBLE!)
+- ${{current_price * 1.2:.2f}} (20% gain in 60s - IMPOSSIBLE!)
+- Any number not between ${{min_realistic:.2f}} and ${{max_realistic:.2f}}
+
+OUTPUT FORMAT: Just a single number with 2 decimal places, nothing else.
+Example: {{current_price + 1:.2f}}
+\"\"\"
         
         r = client.chat.completions.create(
             model="asi1-fast",
             messages=[
                 {{"role": "system", "content": system_prompt}},
-                {{"role": "user", "content": "What will ETH price be in 60 seconds?"}},
+                {{"role": "user", "content": f"Current ETH: ${{current_price:.2f}}. What will it be in 60 seconds? (Give just the number)"}},
             ],
-            max_tokens=2048,
+            max_tokens=50,  # Reduced tokens since we only need a number
+            temperature=0.3,  # Lower temperature for more conservative predictions
         )
         prediction_text = str(r.choices[0].message.content).strip()
         
@@ -379,8 +417,30 @@ def get_ai_prediction(eth_price_data):
             else:
                 ai_pred = eth_price_data['price']  # Fallback to current price
         
+        print(f"[AI] Raw AI prediction: ${{ai_pred:.2f}} (current: ${{current_price:.2f}})")
+        
+        print(f"[AI] Raw AI prediction: ${{ai_pred:.2f}} (current: ${{current_price:.2f}})")
+        
+        # NUCLEAR OPTION: If AI is being stupid, just use current price ± tiny random
+        if abs(ai_pred - current_price) > current_price * 0.05:  # More than 5% off
+            print(f"[OVERRIDE] AI prediction is garbage (${{ai_pred:.2f}}), using smart fallback")
+            import random
+            # Use current price with tiny random variation (±0.2%)
+            ai_pred = current_price * (1 + random.uniform(-0.002, 0.002))
+            print(f"[OVERRIDE] Forced to: ${{ai_pred:.2f}}")
+        
         # VALIDATION LAYER - Prevent hallucinations and crazy predictions
         current = eth_price_data['price']
+        
+        # STRICTER VALIDATION: Check if AI prediction is completely off
+        if abs(ai_pred - current) > current * 0.20:  # More than 20% off
+            print(f"[VALIDATION] AI COMPLETELY WRONG! Predicted: ${{ai_pred:.2f}}, Current: ${{current:.2f}}")
+            print(f"[VALIDATION] Difference: {{abs(ai_pred - current):.2f}} ({{abs(ai_pred - current) / current * 100:.1f}}%)")
+            print(f"[VALIDATION] Forcing prediction to current price ±0.1%")
+            import random
+            # Force to be within 0.1% of current price
+            ai_pred = current * (1 + random.uniform(-0.001, 0.001))
+            print(f"[VALIDATION] Corrected to: ${{ai_pred:.2f}}")
         
         # Step 1: Check for extreme hallucinations (>10% change in 60 seconds)
         change_pct = abs(ai_pred - current) / current
@@ -389,18 +449,18 @@ def get_ai_prediction(eth_price_data):
             print(f"[VALIDATION] HALLUCINATION DETECTED!")
             print(f"[VALIDATION] AI predicted: ${{ai_pred:.2f}}, Current: ${{current:.2f}}")
             print(f"[VALIDATION] Change: {{change_pct * 100:.1f}}% - IMPOSSIBLE in 60 seconds!")
-            print(f"[VALIDATION] Returning tiny random variation instead")
+            print(f"[VALIDATION] Clamping to current price")
             import random
-            return current * (1 + random.uniform(-0.0001, 0.0001))
+            return current * (1 + random.uniform(-0.0005, 0.0005))  # Within 0.05%
         
-        # Step 2: Validate within realistic bounds (2% max change in 60 seconds)
-        max_change = current * 0.02
+        # Step 2: Validate within realistic bounds (1% max change in 60 seconds - TIGHTER!)
+        max_change = current * 0.01  # Changed from 0.02 to 0.01
         change_amount = abs(ai_pred - current)
         
         if change_amount > max_change:
             print(f"[VALIDATION] BLOCKED: AI predicted ${{ai_pred:.2f}}, but that's {{change_pct * 100:.1f}}% change!")
-            print(f"[VALIDATION] Clamping to 2% max change from current price ${{current:.2f}}")
-            validated = current * 1.02 if ai_pred > current else current * 0.98
+            print(f"[VALIDATION] Clamping to 1% max change from current price ${{current:.2f}}")
+            validated = current * 1.01 if ai_pred > current else current * 0.99
         else:
             validated = ai_pred
         
@@ -585,6 +645,10 @@ async def check_and_submit_prediction(ctx: Context):
         history = fetch_agent_history()
         analysis = analyze_history(history)
         
+        # FIX: DEVIATION SHOULD BE SMALL! Convert 10-99 to 1-9.9% max
+        # Original deviation (10-99) becomes (1-9.9%) adjustment
+        actual_deviation_percent = DEVIATION / 10.0  # 84 becomes 8.4%, 50 becomes 5%
+        
         # Apply DYNAMIC deviation adjustment based on performance
         if analysis['has_history'] and analysis['total_predictions'] > 5:
             # Agent has enough history to adapt deviation
@@ -593,33 +657,44 @@ async def check_and_submit_prediction(ctx: Context):
             
             # Reduce deviation if performing well (accurate predictions)
             if avg_error < 1.0 and win_rate > 0.7:
-                # Doing great! Reduce deviation by 10%
-                dynamic_dev = max(10, DEVIATION - 10)
+                # Doing great! Reduce deviation
+                dynamic_dev = max(1.0, actual_deviation_percent - 1.0)  # Min 1%
                 ctx.logger.info(f"[ADAPTIVE] Performance excellent (error: ${{avg_error:.2f}}, win rate: {{win_rate:.1%}})")
-                ctx.logger.info(f"[ADAPTIVE] Reducing deviation: {{DEVIATION}}% → {{dynamic_dev}}%")
+                ctx.logger.info(f"[ADAPTIVE] Reducing deviation: {{actual_deviation_percent:.1f}}% → {{dynamic_dev:.1f}}%")
             
             # Increase deviation if performing poorly
             elif avg_error > 5.0 or win_rate < 0.3:
-                # Not doing well, increase deviation by 10%
-                dynamic_dev = min(90, DEVIATION + 10)
+                # Not doing well, increase deviation slightly
+                dynamic_dev = min(9.9, actual_deviation_percent + 1.0)  # Max 9.9%
                 ctx.logger.info(f"[ADAPTIVE] Performance needs improvement (error: ${{avg_error:.2f}}, win rate: {{win_rate:.1%}})")
-                ctx.logger.info(f"[ADAPTIVE] Increasing deviation: {{DEVIATION}}% → {{dynamic_dev}}%")
+                ctx.logger.info(f"[ADAPTIVE] Increasing deviation: {{actual_deviation_percent:.1f}}% → {{dynamic_dev:.1f}}%")
             
             # Moderate performance - keep current deviation
             else:
-                dynamic_dev = DEVIATION
+                dynamic_dev = actual_deviation_percent
                 ctx.logger.info(f"[ADAPTIVE] Performance moderate (error: ${{avg_error:.2f}}, win rate: {{win_rate:.1%}})")
-                ctx.logger.info(f"[ADAPTIVE] Keeping deviation: {{DEVIATION}}%")
+                ctx.logger.info(f"[ADAPTIVE] Keeping deviation: {{actual_deviation_percent:.1f}}%")
             
-            deviation_multiplier = 1 - (dynamic_dev / 100)
+            # Apply as SMALL adjustment, not massive reduction!
+            # Instead of (1 - 0.84) = 0.16, use (1 - 0.084) = 0.916
+            deviation_multiplier = 1 - (dynamic_dev / 100)  # 8.4% becomes 0.916, not 0.16!
+            ctx.logger.info(f"[ADAPTIVE] Multiplier: {{deviation_multiplier:.3f}} ({{dynamic_dev:.1f}}% adjustment)")
             ctx.logger.info(f"[ADAPTIVE] Stats: {{analysis['winning_predictions']}} wins, {{analysis['losing_predictions']}} losses")
         else:
             # Not enough history yet - use default deviation
-            deviation_multiplier = 1 - (DEVIATION / 100)
-            ctx.logger.info(f"[DEVIATION] Using default: {{DEVIATION}}% (need >5 predictions for adaptive mode)")
+            deviation_multiplier = 1 - (actual_deviation_percent / 100)
+            ctx.logger.info(f"[DEVIATION] Using default: {{actual_deviation_percent:.1f}}% (multiplier: {{deviation_multiplier:.3f}}, need >5 predictions for adaptive mode)")
         
         adjusted_price = predicted_price * deviation_multiplier
-        ctx.logger.info(f"Deviation: {{DEVIATION}}% -> Adjusted: ${{adjusted_price:.2f}}")
+        ctx.logger.info(f"Final adjustment: ${{predicted_price:.2f}} × {{deviation_multiplier:.3f}} = ${{adjusted_price:.2f}}")
+        
+        # FINAL SAFETY CHECK - If adjusted price is insane, override it!
+        if abs(adjusted_price - eth_price_data['price']) > eth_price_data['price'] * 0.05:
+            ctx.logger.error(f"[SAFETY] Adjusted price ${{adjusted_price:.2f}} is >5% from current ${{eth_price_data['price']:.2f}}!")
+            ctx.logger.error(f"[SAFETY] OVERRIDING to stay within 1% of current price")
+            import random
+            adjusted_price = eth_price_data['price'] * (1 + random.uniform(-0.01, 0.01))
+            ctx.logger.info(f"[SAFETY] Override price: ${{adjusted_price:.2f}}")
         
         # Check gas balance before submitting
         try:
