@@ -101,7 +101,3 @@ Proof-of-Intelligence/
 ├── backend/             Agent infrastructure and API
 └── frontend/            Web dashboard
 ```
-
-## License
-
-MIT License
