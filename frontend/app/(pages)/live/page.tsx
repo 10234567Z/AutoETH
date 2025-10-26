@@ -305,9 +305,6 @@ const LivePredictions = ({
                     <div className="font-bold text-white text-sm">
                       {p.agentAddress.slice(0, 10)}...
                     </div>
-                    <div className="text-xs text-gray-400">
-                      {p.bestGuesses} wins
-                    </div>
                   </div>
                 </div>
                 <div className="text-center">

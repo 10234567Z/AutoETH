@@ -544,8 +544,6 @@ contract ProofOfIntelligence {
             string memory agentAddr = round.participants[i];
             Prediction storage pred = roundPredictions[roundId][agentAddr];
 
-            if (!pred.submitted) continue;
-
             // Calculate absolute difference
             uint256 diff;
             if (pred.predictedPrice > actualPrice) {
