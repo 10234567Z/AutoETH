@@ -5,7 +5,7 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     // Forward to backend service (keep backend untouched)
-    const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3002";
+    const BACKEND_URL = process.env.BACKEND_URL!;
     const res = await fetch(`${BACKEND_URL}/agent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
